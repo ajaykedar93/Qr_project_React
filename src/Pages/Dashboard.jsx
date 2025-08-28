@@ -110,6 +110,18 @@ export default function Dashboard() {
     }
   }
 
+  // 🔥 NEW: revoke a share you created
+  async function delShare(share_id) {
+    if (!confirm("Revoke this share? Recipients will no longer be able to access it.")) return;
+    try {
+      await api.delete(`/shares/${share_id}`);
+      setMyShares((arr) => arr.filter((s) => s.share_id !== share_id));
+      toast.success("Share revoked");
+    } catch (e) {
+      toast.error(e?.response?.data?.error || "Failed to revoke share");
+    }
+  }
+
   // 🔔 create share + auto email notification
   async function createShare() {
     try {
@@ -121,7 +133,11 @@ export default function Dashboard() {
       };
 
       if (payload.access === "private" && payload.to_user_email && emailCheck.exists === false) {
-        if (!confirm("Recipient is not registered. You can still create the PRIVATE share, but they must sign up and OTP verify to open. Continue?")) {
+        if (
+          !confirm(
+            "Recipient is not registered. You can still create the PRIVATE share, but they must sign up and OTP verify to open. Continue?"
+          )
+        ) {
           return;
         }
       }
@@ -192,7 +208,6 @@ export default function Dashboard() {
   function mailtoUrl(share) {
     const subject = encodeURIComponent("A document was shared with you via QR-Docs");
     const link = `${window.location.origin}/share/${share.share_id}`;
-    // Use the SVG endpoint as the reliable link
     const qrUrlSvg = buildQrSvgById(share.share_id);
     const body = [
       `Hi,`,
@@ -208,7 +223,9 @@ export default function Dashboard() {
       ``,
       `Thanks!`,
     ].join("\n");
-    return `mailto:${encodeURIComponent(share.to_user_email || "")}?subject=${subject}&body=${encodeURIComponent(body)}`;
+    return `mailto:${encodeURIComponent(share.to_user_email || "")}?subject=${subject}&body=${encodeURIComponent(
+      body
+    )}`;
   }
 
   return (
@@ -312,7 +329,7 @@ export default function Dashboard() {
                   <th align="left">Document</th>
                   <th>Access</th>
                   <th>To</th>
-                  <th>QR / Link</th>
+                  <th>QR / Link / Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -335,18 +352,22 @@ export default function Dashboard() {
                       <td style={{ fontSize: 13, opacity: 0.85 }}>
                         {s.to_user_email || (s.to_user_id ? "User" : "-")}
                       </td>
-                      <td style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                      <td style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <img
                           src={qrSvg}
                           alt="QR"
                           crossOrigin="anonymous"
                           style={{ width: 40, height: 40, background: "#fff", borderRadius: 6, padding: 3, cursor: "pointer" }}
                           onClick={() => setViewShare(s)}
+                          title="Preview QR"
                         />
                         <a className="btn" href={`${window.location.origin}/share/${s.share_id}`} target="_blank" rel="noreferrer">
                           Open
                         </a>
                         {s.to_user_email && <a className="btn" href={mailtoUrl(s)}>Email</a>}
+                        <button className="btn btn-danger" onClick={() => delShare(s.share_id)}>
+                          Revoke
+                        </button>
                       </td>
                     </tr>
                   );

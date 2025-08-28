@@ -1,6 +1,13 @@
 // src/App.jsx
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate, useLocation, Link } from "react-router-dom";
+import {
+  HashRouter as Router, // ✅ HashRouter so deep links work on Vercel
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+  Link,
+} from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { motion } from "framer-motion";
@@ -20,19 +27,27 @@ function getToken() {
 function useAuthToken() {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
   });
 
   useEffect(() => {
     const refresh = () => {
       setToken(localStorage.getItem("token"));
-      try { setUser(JSON.parse(localStorage.getItem("user") || "{}")); } catch { setUser({}); }
+      try {
+        setUser(JSON.parse(localStorage.getItem("user") || "{}"));
+      } catch {
+        setUser({});
+      }
     };
     const onStorage = (e) => {
       if (e.key === "token" || e.key === "user") refresh();
     };
     window.addEventListener("storage", onStorage);
-    window.addEventListener("auth", refresh); // dispatch this after login/logout
+    window.addEventListener("auth", refresh); // dispatch after login/logout
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener("auth", refresh);
@@ -57,7 +72,8 @@ function TopBar() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     window.dispatchEvent(new Event("auth"));
-    window.location.href = "/login";
+    // With HashRouter, this is still fine:
+    window.location.href = "/#/login";
   };
 
   return (
@@ -108,17 +124,18 @@ function TopBar() {
 /* ---------- app ---------- */
 export default function App() {
   return (
-    <>
+    <Router>
       <TopBar />
 
       <Routes>
+        {/* Default → dashboard (protected) */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* Auth */}
+        {/* Auth (public) */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* App */}
+        {/* App (protected) */}
         <Route
           path="/dashboard"
           element={
@@ -128,10 +145,10 @@ export default function App() {
           }
         />
 
-        {/* Share/OTP flow (NOT protected; ShareAccess handles redirect if needed) */}
+        {/* Share/OTP flow (public; ShareAccess will self-redirect to /login if needed) */}
         <Route path="/share/:shareId" element={<ShareAccess />} />
 
-        {/* View/Download */}
+        {/* View/Download (public route; backend enforces rules via share_id & OTP) */}
         <Route path="/view/:documentId" element={<ViewDoc />} />
 
         {/* Fallback */}
@@ -139,6 +156,14 @@ export default function App() {
       </Routes>
 
       <ToastContainer position="top-right" />
-    </>
+    </Router>
   );
 }
+
+/* Notes:
+   - We use HashRouter so deep links like https://yourapp/#/share/123 always hit the SPA,
+     which fixes Vercel 404s without extra rewrites.
+   - The QR your backend generates must point to HASH URLs:
+       https://qr-project-react.vercel.app/#/share/:id
+   - After login/register, dispatch: window.dispatchEvent(new Event("auth"));
+*/

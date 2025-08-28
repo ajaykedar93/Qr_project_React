@@ -1,82 +1,106 @@
-// src/Pages/ShareAccess.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend base
+const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend
 
 export default function ShareAccess() {
   const { shareId } = useParams();
   const nav = useNavigate();
 
-  const token = localStorage.getItem("token");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const [docId, setDocId] = useState(null);
+  const [access, setAccess] = useState(null);          // "public" | "private"
+  const [recipientEmail, setRecipientEmail] = useState(null);
+
+  const [email, setEmail] = useState("");
+  const [exists, setExists] = useState(null);          // true/false/null
+  const [checking, setChecking] = useState(false);
 
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [meta, setMeta] = useState(null);
-  const [docId, setDocId] = useState(null);
-  const [accessDenied, setAccessDenied] = useState(false);
 
-  // ✅ Redirect to login if not authenticated
+  // 1) Load minimal share data (NO AUTH)
   useEffect(() => {
-    if (!token) {
-      nav("/login", { state: { from: { pathname: `/share/${shareId}` } } });
-      return;
-    }
-
-    // ✅ Fetch document id linked to share
     (async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (data?.document_id) {
-          setDocId(data.document_id);
+        const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`);
+        setDocId(data.document_id);
+        setAccess(data.access);
+        setRecipientEmail(data.to_user_email || null);
+
+        if (data.access === "public") {
+          // Public → open immediately (view-only handled by backend)
+          nav(`/view/${data.document_id}?share_id=${shareId}`, { replace: true });
         }
       } catch (e) {
-        const msg = e?.response?.data?.error || "You cannot access this share";
-        setAccessDenied(true);
-        toast.error(msg);
+        toast.error(e?.response?.data?.error || "Invalid or expired share");
       }
     })();
-  }, [token, shareId, nav]);
+  }, [shareId, nav]);
 
-  // ✅ Request OTP
+  // 2) Live email check (registered user)
+  useEffect(() => {
+    const value = (email || "").trim();
+    if (!value) { setExists(null); return; }
+    const t = setTimeout(async () => {
+      try {
+        setChecking(true);
+        const { data } = await axios.get(`${API_BASE}/users/exists`, { params: { email: value }});
+        setExists(!!data?.exists);
+      } catch {
+        setExists(null);
+      } finally {
+        setChecking(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [email]);
+
+  const canSendOtp = () => {
+    if (access !== "private") return false;
+    if (!email || !exists) return false;
+    // If the share has a specific recipient email, enforce it matches
+    if (recipientEmail && recipientEmail.toLowerCase() !== email.toLowerCase()) return false;
+    return true;
+  };
+
   async function sendOtp() {
     try {
-      const { data } = await axios.post(
-        `${API_BASE}/otp/send`,
-        { user_id: user.user_id, share_id: shareId },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      if (!canSendOtp()) return;
+      const { data } = await axios.post(`${API_BASE}/otp/send`, {
+        share_id: shareId,
+        email,
+      });
       setOtpSent(true);
       setMeta(data?.data);
-      toast.success("OTP sent to your registered email");
+      toast.success("OTP sent to your email");
     } catch (e) {
-      const msg = e?.response?.data?.error || "This private share is only available to the registered recipient";
-      setAccessDenied(true);
-      toast.error(msg);
+      toast.error(e?.response?.data?.error || "Failed to send OTP");
     }
   }
 
-  // ✅ Verify OTP
   async function verifyOtp() {
     try {
-      await axios.post(
-        `${API_BASE}/otp/verify`,
-        { user_id: user.user_id, share_id: shareId, otp_code: otp },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await axios.post(`${API_BASE}/otp/verify`, {
+        share_id: shareId,
+        email,
+        otp_code: otp,
+      });
+      // store verified email for document endpoints
+      sessionStorage.setItem("verifiedEmail", email);
       toast.success("Verified! Opening document…");
-      if (docId) {
-        nav(`/view/${docId}?share_id=${shareId}`);
-      }
+      nav(`/view/${docId}?share_id=${shareId}`);
     } catch (e) {
       toast.error(e?.response?.data?.error || "Invalid or expired OTP");
     }
+  }
+
+  if (access === "public") {
+    // brief placeholder while redirecting
+    return <div style={{ padding: 24 }}>Opening…</div>;
   }
 
   return (
@@ -84,72 +108,59 @@ export default function ShareAccess() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{
-          background: "#0f1533",
-          padding: 24,
-          borderRadius: 14,
-          border: "1px solid #2a3170",
-        }}
+        style={{ background: "#0f1533", padding: 24, borderRadius: 14, border: "1px solid #2a3170" }}
       >
         <h2 style={{ marginTop: 0 }}>Access Shared Document</h2>
         <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 10 }}>
           Share ID: <code>{shareId}</code>
         </div>
 
-        {accessDenied ? (
-          <div
-            style={{
-              background: "#3a1a1a",
-              color: "#ffbdbd",
-              padding: 16,
-              borderRadius: 8,
-              fontSize: 14,
-              marginBottom: 12,
-            }}
-          >
-            <strong>Access Denied:</strong> This is a private document. Only the
-            registered recipient can access it. Please ensure you are signed up
-            with the correct email address.
-          </div>
-        ) : (
-          <>
-            <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 15 }}>
-              Verify your identity
-            </div>
+        {/* PRIVATE FLOW */}
+        <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 15 }}>Verify your identity</div>
 
-            <div style={{ display: "grid", gap: 10 }}>
-              <button className="btn btn-primary" onClick={sendOtp}>
-                Send OTP
-              </button>
-              {otpSent && meta?.expiry_time && (
-                <div style={{ fontSize: 12, opacity: 0.7 }}>
-                  OTP expires at: {meta.expiry_time}
+        <div style={{ display: "grid", gap: 10 }}>
+          <input
+            className="input"
+            placeholder="Enter your registered email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {!!email && (
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              {checking ? "Checking…" :
+                exists === true ? "Email is registered ✅" :
+                exists === false ? "Email not found ❌" : ""}
+              {recipientEmail && email && exists && (
+                <div style={{ marginTop: 4, opacity: 0.85 }}>
+                  This share is intended for: <b>{recipientEmail}</b>
                 </div>
               )}
-              {otpSent && (
-                <input
-                  className="input"
-                  placeholder="Enter OTP"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                />
-              )}
             </div>
+          )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-              <button
-                className="btn btn-primary"
-                onClick={verifyOtp}
-                disabled={!otpSent || !otp}
-              >
-                Verify & Open
-              </button>
-              <Link className="btn" to="/dashboard">
-                Back
-              </Link>
-            </div>
-          </>
-        )}
+          <button className="btn btn-primary" onClick={sendOtp} disabled={!canSendOtp()}>
+            Send OTP
+          </button>
+
+          {otpSent && meta?.expiry_time && (
+            <div style={{ fontSize: 12, opacity: 0.7 }}>OTP expires at: {meta.expiry_time}</div>
+          )}
+          {otpSent && (
+            <input
+              className="input"
+              placeholder="Enter OTP"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+            />
+          )}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+          <button className="btn btn-primary" onClick={verifyOtp} disabled={!otpSent || !otp}>
+            Verify & Open
+          </button>
+          <Link className="btn" to="/dashboard">Back</Link>
+        </div>
       </motion.div>
     </div>
   );
