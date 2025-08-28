@@ -8,36 +8,62 @@ export default function QRScanner({ onDecode, onError }) {
   const [active, setActive] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
+    let isMounted = true;
+
     (async () => {
       try {
         const devices = await BrowserMultiFormatReader.listVideoInputDevices();
-        const preferred = devices?.find((d) => /back|environment/i.test(d.label)) || devices?.[0];
+        const preferred =
+          devices?.find((d) => /back|environment/i.test(d.label)) || devices?.[0];
+
         if (!preferred) throw new Error("No camera found");
+
+        if (!isMounted) return;
         setActive(true);
-        await reader.decodeFromVideoDevice(preferred.deviceId, videoRef.current, (result, err) => {
-          if (result) onDecode?.(result.getText());
-          else if (err && err.name !== "NotFoundException") onError?.(err);
-        });
+
+        await reader.decodeFromVideoDevice(
+          preferred.deviceId,
+          videoRef.current,
+          (result, err) => {
+            if (result) {
+              onDecode?.(result.getText());
+            } else if (err && err.name !== "NotFoundException") {
+              onError?.(err);
+            }
+          }
+        );
       } catch (e) {
-        onError?.(e);
+        if (isMounted) onError?.(e);
       }
     })();
+
     return () => {
-      try { reader.reset(); } catch {}
+      isMounted = false;
+      try {
+        reader.reset();
+      } catch {
+        // ignore
+      }
       setActive(false);
-      mounted = false;
     };
   }, [reader, onDecode, onError]);
 
   return (
     <div style={{ position: "relative", width: "100%", maxWidth: 360 }}>
-      <video ref={videoRef} style={{ width: "100%", borderRadius: 12, background: "#000" }} muted playsInline />
+      <video
+        ref={videoRef}
+        style={{ width: "100%", borderRadius: 12, background: "#000" }}
+        muted
+        playsInline
+      />
       {active && (
         <div
           style={{
-            position: "absolute", inset: 0, border: "2px solid rgba(255,255,255,0.5)",
-            borderRadius: 12, pointerEvents: "none",
+            position: "absolute",
+            inset: 0,
+            border: "2px solid rgba(255,255,255,0.5)",
+            borderRadius: 12,
+            pointerEvents: "none",
           }}
         />
       )}

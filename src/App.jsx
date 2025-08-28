@@ -56,7 +56,7 @@ function TopBar() {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    window.dispatchEvent(new Event("auth")); // notify listeners in this tab
+    window.dispatchEvent(new Event("auth"));
     window.location.href = "/login";
   };
 
@@ -128,10 +128,10 @@ export default function App() {
           }
         />
 
-        {/* Share/OTP flow */}
+        {/* Share/OTP flow (NOT protected; ShareAccess handles redirect if needed) */}
         <Route path="/share/:shareId" element={<ShareAccess />} />
 
-        {/* View/Download (rules handled by backend) */}
+        {/* View/Download */}
         <Route path="/view/:documentId" element={<ViewDoc />} />
 
         {/* Fallback */}
@@ -142,9 +142,3 @@ export default function App() {
     </>
   );
 }
-
-/* Note:
-   After successful login or register, call:
-   window.dispatchEvent(new Event("auth"));
-   so the TopBar updates immediately.
-*/
