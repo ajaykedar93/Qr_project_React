@@ -1,31 +1,22 @@
 // src/App.jsx
-import { useEffect, useState } from "react";
-import {
-  HashRouter as Router, // ✅ HashRouter so deep links work on Vercel
-  Routes,
-  Route,
-  Navigate,
-  useLocation,
-  Link,
-} from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
+import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { motion } from "framer-motion";
 
 // Pages
-import Login from "./Pages/Login.jsx";
 import Register from "./Pages/Register.jsx";
+import Login from "./Pages/Login.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
 import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
 
-/* ---------- auth helpers ---------- */
-function getToken() {
-  return localStorage.getItem("token");
+// ---------- Helpers ----------
+function isAuthed() {
+  return !!localStorage.getItem("token");
 }
 
-function useAuthToken() {
-  const [token, setToken] = useState(() => localStorage.getItem("token"));
+function useAuthUser() {
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("user") || "{}");
@@ -35,135 +26,151 @@ function useAuthToken() {
   });
 
   useEffect(() => {
-    const refresh = () => {
-      setToken(localStorage.getItem("token"));
+    const onAuth = () => {
       try {
         setUser(JSON.parse(localStorage.getItem("user") || "{}"));
       } catch {
         setUser({});
       }
     };
-    const onStorage = (e) => {
-      if (e.key === "token" || e.key === "user") refresh();
-    };
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("auth", refresh); // dispatch after login/logout
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("auth", refresh);
-    };
+    window.addEventListener("auth", onAuth);
+    return () => window.removeEventListener("auth", onAuth);
   }, []);
 
-  return { token, user };
+  return user;
 }
 
-function Protected({ children }) {
-  const token = getToken();
+function ProtectedRoute({ children }) {
   const loc = useLocation();
-  if (!token) return <Navigate to="/login" state={{ from: loc }} replace />;
+  if (!isAuthed()) {
+    return <Navigate to="/login" replace state={{ from: loc }} />;
+  }
   return children;
 }
 
-/* ---------- top bar ---------- */
-function TopBar() {
-  const { token, user } = useAuthToken();
+// ---------- Layout ----------
+function Topbar() {
+  const user = useAuthUser();
+  const nav = useNavigate();
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    sessionStorage.removeItem("verifiedEmail");
     window.dispatchEvent(new Event("auth"));
-    // With HashRouter, this is still fine:
-    window.location.href = "/#/login";
-  };
+    nav("/login", { replace: true });
+  }, [nav]);
 
   return (
-    <motion.header
-      initial={{ y: -12, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
+    <header
       style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "10px 16px",
+        background: "#0b1230",
+        borderBottom: "1px solid #2a3170",
         position: "sticky",
         top: 0,
-        zIndex: 50,
-        background: "#0f1533",
-        borderBottom: "1px solid #2a3170",
+        zIndex: 20,
       }}
     >
-      <div
-        style={{
-          maxWidth: 1100,
-          margin: "0 auto",
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-        }}
-      >
-        <Link to="/" style={{ fontWeight: 800, letterSpacing: 0.5, color: "#e9ecff" }}>
-          QR-Docs
-        </Link>
+      <Link to="/" style={{ color: "#fff", textDecoration: "none", fontWeight: 700 }}>
+        QR-Docs
+      </Link>
 
-        <div style={{ marginLeft: "auto", display: "flex", gap: 10, alignItems: "center" }}>
-          {token ? (
-            <>
-              <span style={{ fontSize: 14, opacity: 0.8 }}>{user?.email}</span>
-              <Link className="btn" to="/dashboard">Dashboard</Link>
-              <button className="btn btn-danger" onClick={logout}>Logout</button>
-            </>
-          ) : (
-            <>
-              <Link className="btn" to="/login">Login</Link>
-              <Link className="btn btn-primary" to="/register">Register</Link>
-            </>
-          )}
-        </div>
+      <nav style={{ display: "flex", gap: 10, marginLeft: 12 }}>
+        {isAuthed() && (
+          <Link className="btn" to="/dashboard">
+            Dashboard
+          </Link>
+        )}
+      </nav>
+
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+        {isAuthed() ? (
+          <>
+            <span style={{ fontSize: 13, opacity: 0.85 }}>{user?.email}</span>
+            <button className="btn btn-danger" onClick={logout}>
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link className="btn" to="/login">
+              Login
+            </Link>
+            <Link className="btn btn-primary" to="/register">
+              Register
+            </Link>
+          </>
+        )}
       </div>
-    </motion.header>
+    </header>
   );
 }
 
-/* ---------- app ---------- */
+// ---------- App ----------
 export default function App() {
   return (
-    <Router>
-      <TopBar />
+    <BrowserRouter>
+      <Topbar />
 
-      <Routes>
-        {/* Default → dashboard (protected) */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <main style={{ minHeight: "calc(100vh - 56px)" }}>
+        <Routes>
+          {/* Default: send authed users to dashboard, others to login */}
+          <Route
+            path="/"
+            element={isAuthed() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+          />
 
-        {/* Auth (public) */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+          {/* Public auth routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
-        {/* App (protected) */}
-        <Route
-          path="/dashboard"
-          element={
-            <Protected>
-              <Dashboard />
-            </Protected>
-          }
-        />
+          {/* QR landing → resolve + OTP flow */}
+          <Route path="/share/:shareId" element={<ShareAccess />} />
 
-        {/* Share/OTP flow (public; ShareAccess will self-redirect to /login if needed) */}
-        <Route path="/share/:shareId" element={<ShareAccess />} />
+          {/* Viewer (public view-only OR private after OTP) */}
+          <Route path="/view/:documentId" element={<ViewDoc />} />
 
-        {/* View/Download (public route; backend enforces rules via share_id & OTP) */}
-        <Route path="/view/:documentId" element={<ViewDoc />} />
+          {/* Private: dashboard */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
 
-      <ToastContainer position="top-right" />
-    </Router>
+      <ToastContainer position="top-right" autoClose={2500} theme="dark" />
+    </BrowserRouter>
   );
 }
 
-/* Notes:
-   - We use HashRouter so deep links like https://yourapp/#/share/123 always hit the SPA,
-     which fixes Vercel 404s without extra rewrites.
-   - The QR your backend generates must point to HASH URLs:
-       https://qr-project-react.vercel.app/#/share/:id
-   - After login/register, dispatch: window.dispatchEvent(new Event("auth"));
-*/
+function NotFound() {
+  return (
+    <div style={{ maxWidth: 700, margin: "60px auto", padding: 16 }}>
+      <div
+        style={{
+          background: "#0f1533",
+          border: "1px solid #2a3170",
+          borderRadius: 14,
+          padding: 24,
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>Page not found</h2>
+        <p style={{ opacity: 0.8 }}>
+          The page you’re looking for doesn’t exist. Go back to{" "}
+          <Link to="/dashboard">Dashboard</Link> or <Link to="/login">Login</Link>.
+        </p>
+      </div>
+    </div>
+  );
+}

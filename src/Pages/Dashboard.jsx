@@ -7,30 +7,21 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import QRScanner from "./QRScanner.jsx";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend base (no /auth here)
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; // backend root
 
-/** Build public URL from qr_code_path, if you ever need PNG fallback */
-function buildQrUrl(qr_code_path) {
-  if (!qr_code_path) return "";
-  if (/^https?:\/\//i.test(qr_code_path)) return qr_code_path;
-  const parts = String(qr_code_path).split(/[\\/]/);
-  const filename = parts.pop() || "";
-  if (!filename) return "";
-  const base = API_BASE.endsWith("/") ? API_BASE : API_BASE + "/";
-  return new URL(`qrcodes/${filename}`, base).toString();
-}
-
-/** Prefer the on-demand SVG endpoint so QR never “disappears” on Render */
-function buildQrSvgById(share_id) {
+// Generate a QR image for the JSON payload the scanner expects: { "share_id": "..." }
+function qrImgForShareId(share_id) {
   if (!share_id) return "";
-  const base = API_BASE.endsWith("/") ? API_BASE : API_BASE + "/";
-  return new URL(`shares/${share_id}/qr.svg`, base).toString();
+  const payload = encodeURIComponent(JSON.stringify({ share_id }));
+  // Browser loads the image directly from a public QR generator
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${payload}`;
 }
 
 export default function Dashboard() {
   const nav = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+  // Axios with auth header
   const api = useMemo(() => {
     const i = axios.create({ baseURL: API_BASE });
     i.interceptors.request.use((cfg) => {
@@ -46,20 +37,20 @@ export default function Dashboard() {
   const [myShares, setMyShares] = useState([]);
   const [received, setReceived] = useState([]);
 
-  // share dialog
+  // Share create modal
   const [shareFor, setShareFor] = useState(null);
   const [shareForm, setShareForm] = useState({
     to_user_email: "",
-    access: "private",
+    access: "private",   // UI hint only; backend decides based on registration
     expiry_time: "",
   });
   const [shareResult, setShareResult] = useState(null);
 
-  // recipient realtime status
+  // Recipient existence check
   const [emailCheck, setEmailCheck] = useState({ loading: false, exists: null, error: "" });
   const emailTimerRef = useRef(null);
 
-  // modal to view an existing share
+  // Share details modal
   const [viewShare, setViewShare] = useState(null);
 
   // Drag & drop upload
@@ -110,11 +101,11 @@ export default function Dashboard() {
     }
   }
 
-  // 🔥 NEW: revoke a share you created
-  async function delShare(share_id) {
+  // Revoke a share you created
+  async function revokeShare(share_id) {
     if (!confirm("Revoke this share? Recipients will no longer be able to access it.")) return;
     try {
-      await api.delete(`/shares/${share_id}`);
+      await api.post(`/shares/${share_id}/revoke`);
       setMyShares((arr) => arr.filter((s) => s.share_id !== share_id));
       toast.success("Share revoked");
     } catch (e) {
@@ -122,49 +113,49 @@ export default function Dashboard() {
     }
   }
 
-  // 🔔 create share + auto email notification
+  // Create share + (optional) email notify
   async function createShare() {
     try {
       const payload = {
         document_id: shareFor,
-        ...shareForm,
-        to_user_email: shareForm.to_user_email || null,
+        to_email: shareForm.to_user_email || null,
         expiry_time: shareForm.expiry_time || null,
+        // 'access' is decided server-side (registered => private, else public)
       };
 
-      if (payload.access === "private" && payload.to_user_email && emailCheck.exists === false) {
-        if (
-          !confirm(
-            "Recipient is not registered. You can still create the PRIVATE share, but they must sign up and OTP verify to open. Continue?"
-          )
-        ) {
-          return;
-        }
+      // heads-up if user forced "private" but the email isn't in DB
+      if (shareForm.access === "private" && payload.to_email && emailCheck.exists === false) {
+        const proceed = confirm(
+          "Recipient is not registered. You can still create the share (will be PUBLIC view-only), or ask them to register. Continue?"
+        );
+        if (!proceed) return;
       }
 
-      const { data } = await api.post("/shares/create", payload);
+      // Create share
+      const { data } = await api.post("/shares", payload);
+      // data contains: share_id, share_token, access, expiry_time, created_at, url
       setShareResult(data);
 
-      // refresh My Shares
+      // Refresh "My Shares"
       const mine = await api.get("/shares/mine").then((r) => r.data || []);
       setMyShares(mine);
 
-      toast.success(data.recipientExists ? "Recipient in DB ✅" : "Shared (recipient not registered)");
-
-      if (payload.to_user_email) {
+      if (payload.to_email) {
         try {
-          await api.post("/notify/share", { share_id: data.share.share_id });
-          toast.success("Email sent to recipient");
+          await api.post("/otp/notify-share", { share_id: data.share_id });
+          toast.success("Share created & email sent");
         } catch {
           toast.warn("Share created, but email could not be sent");
         }
+      } else {
+        toast.success("Share created");
       }
     } catch (e) {
       toast.error(e?.response?.data?.error || "Share failed");
     }
   }
 
-  // realtime email check (debounced)
+  // Debounced recipient existence check
   useEffect(() => {
     const email = (shareForm.to_user_email || "").trim();
     if (emailTimerRef.current) clearTimeout(emailTimerRef.current);
@@ -177,9 +168,9 @@ export default function Dashboard() {
     emailTimerRef.current = setTimeout(async () => {
       try {
         setEmailCheck((s) => ({ ...s, loading: true, error: "" }));
-        const { data } = await api.get("/users/exists", { params: { email } });
+        const { data } = await api.get("/auth/exists", { params: { email } });
         setEmailCheck({ loading: false, exists: !!data?.exists, error: "" });
-      } catch (e) {
+      } catch {
         setEmailCheck({ loading: false, exists: null, error: "Check failed" });
       }
     }, 450);
@@ -208,18 +199,15 @@ export default function Dashboard() {
   function mailtoUrl(share) {
     const subject = encodeURIComponent("A document was shared with you via QR-Docs");
     const link = `${window.location.origin}/share/${share.share_id}`;
-    const qrUrlSvg = buildQrSvgById(share.share_id);
     const body = [
       `Hi,`,
       ``,
       `I've shared a document with you.`,
       `Access link: ${link}`,
-      `Access type: ${share.access.toUpperCase()}`,
+      `Access type: ${share.access?.toUpperCase()}`,
       share.access === "private"
         ? `Since this is PRIVATE, please login with your registered email. You'll receive an OTP to view/download.`
         : `This is PUBLIC (view-only).`,
-      ``,
-      `QR image (open/download): ${qrUrlSvg}`,
       ``,
       `Thanks!`,
     ].join("\n");
@@ -235,7 +223,7 @@ export default function Dashboard() {
         <div style={{ marginLeft: "auto", opacity: 0.8, fontSize: 14 }}>{user?.email}</div>
       </div>
 
-      {/* Upload area */}
+      {/* Upload */}
       <motion.div
         {...getRootProps()}
         initial={{ opacity: 0, y: 8 }}
@@ -256,7 +244,7 @@ export default function Dashboard() {
         <div style={{ opacity: 0.75, fontSize: 13 }}>or click to choose a file</div>
       </motion.div>
 
-      {/* GRID: My Documents / My Shares */}
+      {/* Grid */}
       <div style={{ display: "grid", gap: 18, gridTemplateColumns: "1fr 1fr" }}>
         {/* My Documents */}
         <section
@@ -334,7 +322,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {myShares.map((s) => {
-                  const qrSvg = buildQrSvgById(s.share_id);
+                  const qrImg = qrImgForShareId(s.share_id);
                   return (
                     <tr key={s.share_id}>
                       <td>
@@ -354,9 +342,8 @@ export default function Dashboard() {
                       </td>
                       <td style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <img
-                          src={qrSvg}
+                          src={qrImg}
                           alt="QR"
-                          crossOrigin="anonymous"
                           style={{ width: 40, height: 40, background: "#fff", borderRadius: 6, padding: 3, cursor: "pointer" }}
                           onClick={() => setViewShare(s)}
                           title="Preview QR"
@@ -365,7 +352,7 @@ export default function Dashboard() {
                           Open
                         </a>
                         {s.to_user_email && <a className="btn" href={mailtoUrl(s)}>Email</a>}
-                        <button className="btn btn-danger" onClick={() => delShare(s.share_id)}>
+                        <button className="btn btn-danger" onClick={() => revokeShare(s.share_id)}>
                           Revoke
                         </button>
                       </td>
@@ -409,7 +396,7 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {received.map((r) => {
-                const qrSvg = buildQrSvgById(r.share_id);
+                const qrImg = qrImgForShareId(r.share_id);
                 return (
                   <tr key={r.share_id}>
                     <td>
@@ -424,9 +411,8 @@ export default function Dashboard() {
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <img
-                        src={qrSvg}
+                        src={qrImg}
                         alt="QR"
-                        crossOrigin="anonymous"
                         style={{ width: 56, height: 56, background: "#fff", borderRadius: 6, padding: 4, cursor: "pointer" }}
                         onClick={() => setViewShare(r)}
                       />
@@ -485,7 +471,7 @@ export default function Dashboard() {
                           <span className="badge" style={{ background: "#ff7c7c55", color: "#ffbdbd" }}>Not registered</span>
                           {shareForm.access === "private" ? (
                             <span style={{ opacity: .85 }}>
-                              Tip: you can switch to <b>Public</b> (view-only), or ask them to register (they'll still get an email).
+                              Tip: switch to <b>Public</b> (view-only), or ask them to register.
                             </span>
                           ) : (
                             <span style={{ opacity: .85 }}>They can open the public link (view-only).</span>
@@ -517,33 +503,25 @@ export default function Dashboard() {
                 <button className="btn" onClick={() => { setShareFor(null); setShareResult(null); }}>Close</button>
               </div>
 
-              {shareResult?.share && (
+              {shareResult && (
                 <div style={{ marginTop: 12 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span
-                      style={{
-                        fontSize: 12, padding: "3px 8px", borderRadius: 999,
-                        background: shareResult.recipientExists ? "#52e1c1" : "#ff7c7c22",
-                        color: shareResult.recipientExists ? "#012" : "#ff9b9b",
-                      }}
-                    >
-                      {shareResult.recipientExists ? "Recipient in DB" : "User not registered"}
-                    </span>
                     <span style={{ opacity: 0.8, fontSize: 13 }}>
-                      Access: {shareResult.share.access}
+                      Access: {shareResult.access?.toUpperCase?.() || shareForm.access.toUpperCase()}
                     </span>
                   </div>
                   <div style={{ marginTop: 10 }}>
                     <img
                       alt="QR"
-                      src={buildQrSvgById(shareResult.share.share_id)}
-                      crossOrigin="anonymous"
+                      src={qrImgForShareId(shareResult.share_id)}
                       style={{ width: 180, height: 180, borderRadius: 8, background: "#fff", padding: 8 }}
                     />
                   </div>
-                  <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-                    Share link: <code>{window.location.origin}/share/{shareResult.share.share_id}</code>
-                  </div>
+                  {shareResult.url && (
+                    <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
+                      Share link: <code>{shareResult.url}</code>
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -575,20 +553,18 @@ export default function Dashboard() {
                 <div style={{ marginTop: 6 }}>
                   <img
                     alt="QR"
-                    src={buildQrSvgById(viewShare.share_id)}
-                    crossOrigin="anonymous"
+                    src={qrImgForShareId(viewShare.share_id)}
                     style={{ width: 220, height: 220, borderRadius: 8, background: "#fff", padding: 8 }}
                   />
                 </div>
                 <div style={{ fontSize: 13, opacity: 0.85 }}>
-                  Scan the QR with any device. If the share is <b>private</b>, the recipient must be a
-                  registered user and complete OTP to view/download.
+                  Scan the QR with any device. For <b>private</b> shares, the recipient must be registered and complete OTP.
                 </div>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <a className="btn" href={`${window.location.origin}/share/${viewShare.share_id}`} target="_blank" rel="noreferrer">
                     Open Share
                   </a>
-                  <a className="btn" href={buildQrSvgById(viewShare.share_id)} download>
+                  <a className="btn" href={qrImgForShareId(viewShare.share_id)} download>
                     Download QR
                   </a>
                   {viewShare.to_user_email && <a className="btn btn-primary" href={mailtoUrl(viewShare)}>Email Share</a>}

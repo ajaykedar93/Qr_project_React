@@ -1,10 +1,11 @@
+// src/Pages/ShareAccess.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; // backend
 
 export default function ShareAccess() {
   const { shareId } = useParams();
@@ -20,7 +21,7 @@ export default function ShareAccess() {
 
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
-  const [meta, setMeta] = useState(null);
+  const [expiresAt, setExpiresAt] = useState("");
 
   // 1) Load minimal share data (NO AUTH)
   useEffect(() => {
@@ -48,7 +49,7 @@ export default function ShareAccess() {
     const t = setTimeout(async () => {
       try {
         setChecking(true);
-        const { data } = await axios.get(`${API_BASE}/users/exists`, { params: { email: value }});
+        const { data } = await axios.get(`${API_BASE}/auth/exists`, { params: { email: value }});
         setExists(!!data?.exists);
       } catch {
         setExists(null);
@@ -75,7 +76,7 @@ export default function ShareAccess() {
         email,
       });
       setOtpSent(true);
-      setMeta(data?.data);
+      setExpiresAt(data?.expires_at || "");
       toast.success("OTP sent to your email");
     } catch (e) {
       toast.error(e?.response?.data?.error || "Failed to send OTP");
@@ -87,9 +88,9 @@ export default function ShareAccess() {
       await axios.post(`${API_BASE}/otp/verify`, {
         share_id: shareId,
         email,
-        otp_code: otp,
+        otp, // <-- backend expects 'otp'
       });
-      // store verified email for document endpoints
+      // store verified email for document endpoints (used as x-user-email header by your viewer)
       sessionStorage.setItem("verifiedEmail", email);
       toast.success("Verified! Opening document…");
       nav(`/view/${docId}?share_id=${shareId}`);
@@ -142,8 +143,8 @@ export default function ShareAccess() {
             Send OTP
           </button>
 
-          {otpSent && meta?.expiry_time && (
-            <div style={{ fontSize: 12, opacity: 0.7 }}>OTP expires at: {meta.expiry_time}</div>
+          {otpSent && expiresAt && (
+            <div style={{ fontSize: 12, opacity: 0.7 }}>OTP expires at: {expiresAt}</div>
           )}
           {otpSent && (
             <input

@@ -5,18 +5,18 @@ import axios from "axios";
 import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com";
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
+/** Parse RFC 5987 content-disposition to get a safe filename */
 function parseFilename(disposition = "") {
-  // content-disposition: attachment; filename="name.pdf"; filename*=UTF-8''name.pdf
-  const fnameStar = disposition.match(/filename\*\s*=\s*([^']*)'[^']*'([^;]+)/i)?.[2];
-  if (fnameStar) return decodeURIComponent(fnameStar);
-  const fname = disposition.match(/filename\s*=\s*"?([^"]+)"?/i)?.[1];
-  return fname || null;
+  const star = disposition.match(/filename\*\s*=\s*([^']*)'[^']*'([^;]+)/i)?.[2];
+  if (star) return decodeURIComponent(star);
+  const plain = disposition.match(/filename\s*=\s*"?([^"]+)"?/i)?.[1];
+  return plain || null;
 }
 
 function formatSize(bytes) {
-  if (!bytes && bytes !== 0) return "";
+  if (bytes == null) return "";
   const u = ["B", "KB", "MB", "GB", "TB"];
   let i = 0, n = Number(bytes);
   while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
@@ -27,13 +27,15 @@ export default function ViewDoc() {
   const { documentId } = useParams();
   const [sp] = useSearchParams();
   const shareId = sp.get("share_id");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
 
+  const [access, setAccess] = useState(null); // "public" | "private" | null
   const [iframeSrc, setIframeSrc] = useState(null);
   const [downloading, setDownloading] = useState(false);
   const [meta, setMeta] = useState({ filename: null, type: null, size: null });
   const [failedPreview, setFailedPreview] = useState(false);
   const blobUrlRef = useRef(null);
+
+  const verifiedEmail = sessionStorage.getItem("verifiedEmail") || "";
 
   const viewUrl = useMemo(() => {
     const u = new URL(`${API_BASE}/documents/view/${documentId}`);
@@ -47,7 +49,7 @@ export default function ViewDoc() {
     return u.toString();
   }, [documentId, shareId]);
 
-  // ⚠️ Proper cleanup for object URLs
+  // Cleanup any object URLs we create
   useEffect(() => {
     return () => {
       if (blobUrlRef.current) {
@@ -57,22 +59,52 @@ export default function ViewDoc() {
     };
   }, []);
 
-  // Fetch as blob (so private shares work with header)
+  // Determine access (public/private) so we can decide about download
+  useEffect(() => {
+    let ignore = false;
+    (async () => {
+      if (!shareId) {
+        // Fallback: if opened without a share (e.g., owner), allow download button
+        setAccess("private");
+        return;
+      }
+      try {
+        const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`);
+        if (!ignore) setAccess(data?.access || null);
+      } catch (e) {
+        if (!ignore) setAccess(null);
+        const msg = e?.response?.data?.error || "Unable to resolve share";
+        toast.error(msg);
+      }
+    })();
+    return () => { ignore = true; };
+  }, [shareId]);
+
+  // Fetch file as blob (so we can attach headers for private)
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setFailedPreview(false);
+
+        const headers = {};
+        // Only send verified email if private; backend checks this
+        if (access === "private" && verifiedEmail) {
+          headers["x-user-email"] = verifiedEmail;
+        }
+
+        // Optional: include Authorization if you allow owner-auth view without share
+        const token = localStorage.getItem("token");
+        if (token) headers["Authorization"] = `Bearer ${token}`;
+
         const resp = await axios.get(viewUrl, {
           responseType: "blob",
-          headers: { "x-user-id": user?.user_id || "" },
-          // you can add Authorization here if your backend expects it:
-          // headers: { Authorization: `Bearer ${localStorage.getItem("token")}`, "x-user-id": user?.user_id || "" },
+          headers,
         });
 
         const disp = resp.headers?.["content-disposition"];
         const type = resp.headers?.["content-type"];
-        const size = resp.headers?.["content-length"];
+        const size = Number(resp.headers?.["content-length"]) || undefined;
         const filename = parseFilename(disp) || `document-${documentId}`;
 
         const blob = new Blob([resp.data], { type: type || "application/octet-stream" });
@@ -86,22 +118,30 @@ export default function ViewDoc() {
         blobUrlRef.current = url;
 
         setIframeSrc(url);
-        setMeta({ filename, type: blob.type, size: Number(size) || undefined });
+        setMeta({ filename, type: blob.type, size });
       } catch (e) {
         setFailedPreview(true);
-        toast.error(e?.response?.data || "Unable to open document");
+        const msg =
+          e?.response?.data?.error ||
+          (typeof e?.response?.data === "string" ? e.response.data : null) ||
+          "Unable to open document";
+        toast.error(msg);
       }
     })();
     return () => { cancelled = true; };
-  }, [viewUrl, user?.user_id, documentId]);
+  }, [viewUrl, access, verifiedEmail, documentId]);
 
   async function doDownload() {
     try {
       setDownloading(true);
-      const resp = await axios.get(downloadUrl, {
-        responseType: "blob",
-        headers: { "x-user-id": user?.user_id || "" },
-      });
+      const headers = {};
+      if (access === "private" && verifiedEmail) {
+        headers["x-user-email"] = verifiedEmail;
+      }
+      const token = localStorage.getItem("token");
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const resp = await axios.get(downloadUrl, { responseType: "blob", headers });
       const disp = resp.headers?.["content-disposition"];
       const type = resp.headers?.["content-type"];
       const filename = parseFilename(disp) || meta.filename || `document-${documentId}`;
@@ -116,26 +156,43 @@ export default function ViewDoc() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(e?.response?.data || "Download not allowed");
+      const msg =
+        e?.response?.data?.error ||
+        (typeof e?.response?.data === "string" ? e.response.data : null) ||
+        "Download not allowed";
+      toast.error(msg);
     } finally {
       setDownloading(false);
     }
   }
 
-  const openRaw = () => window.open(viewUrl, "_blank", "noopener,noreferrer");
+  const openRaw = () => {
+    // For private shares, opening raw directly won’t carry x-user-email
+    // so keep the blob preview as the primary, and raw for public/owner only.
+    window.open(viewUrl, "_blank", "noopener,noreferrer");
+  };
 
   const fancyMeta = [
     meta.filename ? `File: ${meta.filename}` : null,
     meta.type ? `Type: ${meta.type}` : null,
     meta.size ? `Size: ${formatSize(meta.size)}` : null,
-  ].filter(Boolean).join("  •  ");
+  ]
+    .filter(Boolean)
+    .join("  •  ");
+
+  const canDownload = access === "private"; // server also enforces this
 
   return (
     <div style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ background: "#0f1533", padding: 16, borderRadius: 14, border: "1px solid #2a3170" }}
+        style={{
+          background: "#0f1533",
+          padding: 16,
+          borderRadius: 14,
+          border: "1px solid #2a3170",
+        }}
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8 }}>
           <h2 style={{ marginTop: 0, marginBottom: 6, lineHeight: 1.2 }}>Document Viewer</h2>
@@ -144,9 +201,16 @@ export default function ViewDoc() {
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <button className="btn" onClick={openRaw}>Open raw in new tab</button>
-          <button className="btn btn-primary" onClick={doDownload} disabled={downloading}>
-            {downloading ? "Downloading…" : "Download"}
+
+          <button
+            className="btn btn-primary"
+            onClick={doDownload}
+            disabled={!canDownload || downloading}
+            title={!canDownload ? "Public shares are view-only" : ""}
+          >
+            {downloading ? "Downloading…" : canDownload ? "Download" : "Download (disabled for public)"}
           </button>
+
           <Link className="btn" to="/dashboard">Back</Link>
         </div>
 
@@ -154,7 +218,7 @@ export default function ViewDoc() {
           <iframe
             title="Document"
             src={iframeSrc}
-            // sandbox can be adjusted if you need scripting; this is safe default for viewing
+            // Safe defaults for viewing; adjust if you need script execution inside previews
             sandbox="allow-same-origin allow-popups allow-downloads"
             style={{
               width: "100%",
@@ -165,15 +229,28 @@ export default function ViewDoc() {
             }}
           />
         ) : (
-          <div style={{ opacity: 0.8, background: "#0b1230", border: "1px dashed #2a3170", padding: 18, borderRadius: 10 }}>
+          <div
+            style={{
+              opacity: 0.8,
+              background: "#0b1230",
+              border: "1px dashed #2a3170",
+              padding: 18,
+              borderRadius: 10,
+            }}
+          >
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Preview unavailable</div>
             <div style={{ fontSize: 13, opacity: 0.8, marginBottom: 10 }}>
               This file type might not be previewable in the browser. You can still open the raw file or download it.
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <button className="btn" onClick={openRaw}>Open raw in new tab</button>
-              <button className="btn btn-primary" onClick={doDownload} disabled={downloading}>
-                {downloading ? "Downloading…" : "Download"}
+              <button
+                className="btn btn-primary"
+                onClick={doDownload}
+                disabled={!canDownload || downloading}
+                title={!canDownload ? "Public shares are view-only" : ""}
+              >
+                {downloading ? "Downloading…" : canDownload ? "Download" : "Download (disabled for public)"}
               </button>
             </div>
           </div>

@@ -5,7 +5,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com/auth"; // auth base
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; 
+// set VITE_API_URL=https://qr-project-v0h4.onrender.com in your frontend .env
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -24,14 +25,14 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const { data } = await axios.post(`${API_BASE}/login`, { email, password });
-      // save auth
+      const { data } = await axios.post(`${API_BASE}/auth/login`, { email, password });
+      // Save auth
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      // notify header/topbar to re-render
+      // Notify app-level listeners (e.g., header)
       window.dispatchEvent(new Event("auth"));
       toast.success("Welcome back!");
-      // go to dashboard (or the protected page the user came from)
+      // Redirect to intended page or dashboard
       nav(loc.state?.from?.pathname || "/dashboard", { replace: true });
     } catch (err) {
       toast.error(err?.response?.data?.error || "Login failed");
@@ -46,7 +47,12 @@ export default function Login() {
         onSubmit={submit}
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ background: "#0f1533", padding: 24, borderRadius: 14, border: "1px solid #2a3170" }}
+        style={{
+          background: "#0f1533",
+          padding: 24,
+          borderRadius: 14,
+          border: "1px solid #2a3170",
+        }}
       >
         <h2 style={{ marginTop: 0 }}>Login</h2>
 
