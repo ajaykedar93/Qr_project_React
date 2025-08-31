@@ -1,6 +1,14 @@
 // src/App.jsx
 import { useState, useEffect, useCallback } from "react";
-import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -12,7 +20,7 @@ import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 
-// ---------- Helpers ----------
+// ---------- Auth helpers ----------
 function isAuthed() {
   return !!localStorage.getItem("token");
 }
@@ -46,6 +54,12 @@ function ProtectedRoute({ children }) {
   if (!isAuthed()) {
     return <Navigate to="/login" replace state={{ from: loc }} />;
   }
+  return children;
+}
+
+/** If already authed, redirect to /dashboard (prevents seeing login/register again) */
+function UnauthedOnly({ children }) {
+  if (isAuthed()) return <Navigate to="/dashboard" replace />;
   return children;
 }
 
@@ -119,23 +133,37 @@ export default function App() {
 
       <main style={{ minHeight: "calc(100vh - 56px)" }}>
         <Routes>
-          {/* Default: send authed users to dashboard, others to login */}
+          {/* Root: send authed users to dashboard, others to login */}
           <Route
             path="/"
             element={isAuthed() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
           />
 
-          {/* Public auth routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          {/* Public auth routes (block if already authed) */}
+          <Route
+            path="/login"
+            element={
+              <UnauthedOnly>
+                <Login />
+              </UnauthedOnly>
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <UnauthedOnly>
+                <Register />
+              </UnauthedOnly>
+            }
+          />
 
-          {/* QR landing → resolve + OTP flow */}
+          {/* QR landing → ShareAccess decides public/private; if public, redirects to /view/:documentId; if private, runs email+OTP then redirects */}
           <Route path="/share/:shareId" element={<ShareAccess />} />
 
-          {/* Viewer (public view-only OR private after OTP) */}
+          {/* Viewer (public: view-only, private after OTP: view + download) */}
           <Route path="/view/:documentId" element={<ViewDoc />} />
 
-          {/* Private: dashboard */}
+          {/* Protected dashboard */}
           <Route
             path="/dashboard"
             element={

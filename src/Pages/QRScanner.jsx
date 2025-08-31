@@ -1,11 +1,8 @@
 // src/Pages/QRScanner.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-
-const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend API (Render)
 
 export default function QRScanner() {
   const videoRef = useRef(null);
@@ -26,39 +23,55 @@ export default function QRScanner() {
     setActive(false);
   }, []);
 
-  const handleDecode = useCallback(async (text) => {
+  /**
+   * Try our best to pull a shareId from many possible QR payloads:
+   *  1) Full URL with /share/:id
+   *  2) Full URL with ?share_id=:id or ?id=:id
+   *  3) Raw id string
+   */
+  function extractShareIdFromText(text) {
+    // Case 1: full URL?
     try {
-      // text should carry shareId or token. Example: https://yourapp/view?share_id=...
-      let shareId = null;
-      try {
-        const url = new URL(text);
-        shareId = url.searchParams.get("share_id") || url.searchParams.get("id");
-      } catch {
-        // If QR just encoded the ID itself
-        shareId = text;
-      }
+      const url = new URL(text);
 
+      // Prefer /share/:id
+      // e.g. https://app.example.com/share/abcd-1234…
+      const shareMatch = url.pathname.match(/\/share\/([^/?#]+)/i);
+      if (shareMatch?.[1]) return shareMatch[1];
+
+      // Fallback: ?share_id=… or ?id=…
+      const qp = url.searchParams.get("share_id") || url.searchParams.get("id");
+      if (qp) return qp;
+
+      // If it's *some* URL but we can't find a shareId, return null and let caller warn
+      return null;
+    } catch {
+      // Not a URL — maybe it’s just the raw id?
+      const raw = String(text || "").trim();
+
+      // Basic sanity: UUID-like or hex-like or at least not empty
+      if (raw && /^[A-Za-z0-9\-_]{6,}$/.test(raw)) {
+        return raw;
+      }
+      return null;
+    }
+  }
+
+  const handleDecode = useCallback(
+    (text) => {
+      const shareId = extractShareIdFromText(text);
       if (!shareId) {
-        toast.error("Invalid QR code");
+        toast.error("Invalid QR: missing share ID");
         return;
       }
 
-      // Hit backend to check access
-      const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`);
-
-      if (data.access === "public") {
-        // Public → go straight to viewer
-        nav(`/view/${data.document_id}?share_id=${shareId}`);
-      } else if (data.access === "private") {
-        // Private → go to ShareAccess page (email + OTP flow)
-        nav(`/share/${shareId}`);
-      } else {
-        toast.error("Invalid or expired share");
-      }
-    } catch (err) {
-      toast.error(err?.response?.data?.error || "QR scan failed");
-    }
-  }, [nav]);
+      // ALWAYS go to ShareAccess page.
+      // That page will handle public vs private and redirect to viewer for public.
+      nav(`/share/${shareId}`);
+      stop();
+    },
+    [nav, stop]
+  );
 
   const start = useCallback(async () => {
     stop();
@@ -81,9 +94,9 @@ export default function QRScanner() {
           if (result && !decodedOnceRef.current) {
             decodedOnceRef.current = true;
             handleDecode(result.getText());
-            stop(); // stop after first decode
           } else if (err && err.name !== "NotFoundException") {
-            console.error("Decode error:", err);
+            // NotFoundException is normal while scanning; ignore it
+            console.warn("Decode error:", err);
           }
         }
       );
