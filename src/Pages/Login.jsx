@@ -5,8 +5,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; 
-// set VITE_API_URL=https://qr-project-v0h4.onrender.com in your frontend .env
+// Set the base URL to localhost for development and use VITE_API_URL for production
+const API_BASE =  "https://qr-project-v0h4.onrender.com/auth"; 
+// Use the VITE_API_URL in your .env for Vercel or Render deployment
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -17,6 +18,7 @@ export default function Login() {
   const nav = useNavigate();
   const loc = useLocation();
 
+  // Handle form submission
   const submit = async (e) => {
     e.preventDefault();
     if (!email || !password) {
@@ -25,13 +27,16 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const { data } = await axios.post(`${API_BASE}/auth/login`, { email, password });
-      // Save auth
+      const { data } = await axios.post(`${API_BASE}/login`, { email, password });
+      
+      // Save token and user data to localStorage
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+      
       // Notify app-level listeners (e.g., header)
       window.dispatchEvent(new Event("auth"));
       toast.success("Welcome back!");
+
       // Redirect to intended page or dashboard
       nav(loc.state?.from?.pathname || "/dashboard", { replace: true });
     } catch (err) {
@@ -82,7 +87,14 @@ export default function Login() {
             type="button"
             className="btn"
             onClick={() => setShowPwd((v) => !v)}
-            style={{ position: "absolute", right: 6, top: 6, height: 36, padding: "0 10px", fontSize: 12 }}
+            style={{
+              position: "absolute",
+              right: 6,
+              top: 6,
+              height: 36,
+              padding: "0 10px",
+              fontSize: 12,
+            }}
           >
             {showPwd ? "Hide" : "Show"}
           </button>

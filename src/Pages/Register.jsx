@@ -5,8 +5,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; 
-// 👆 set VITE_API_URL in your .env for Vercel/Dev
+// API base URL (directly using localhost for dev)
+const API_BASE = "https://qr-project-v0h4.onrender.com/auth"; // Updated to use localhost for dev
 
 export default function Register() {
   const nav = useNavigate();
@@ -25,7 +25,7 @@ export default function Register() {
     }
     setLoading(true);
     try {
-      await axios.post(`${API_BASE}/auth/register`, {
+      await axios.post(`${API_BASE}/register`, {
         full_name: form.full_name,
         email: form.email,
         password: form.password,

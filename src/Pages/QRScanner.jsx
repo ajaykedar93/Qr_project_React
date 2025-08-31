@@ -1,4 +1,3 @@
-// src/Pages/QRScanner.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 
@@ -13,11 +12,15 @@ export default function QRScanner({ onDecode, onError }) {
   const stop = useCallback(() => {
     try {
       readerRef.current?.reset();
-    } catch {}
+    } catch (e) {
+      console.error("Error stopping QR scanner: ", e);
+    }
+
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
+
     setActive(false);
   }, []);
 
@@ -29,7 +32,7 @@ export default function QRScanner({ onDecode, onError }) {
       // Init reader once
       if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
 
-      // Prefer rear camera via constraints (works even when device labels are hidden pre-permission)
+      // Prefer rear camera via constraints
       setActive(true);
 
       await readerRef.current.decodeFromConstraints(
@@ -37,45 +40,41 @@ export default function QRScanner({ onDecode, onError }) {
           audio: false,
           video: {
             facingMode: { ideal: "environment" },
-            // Tweak if you want a larger preview
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
         },
         videoRef.current,
         (result, err, controls) => {
-          // Save MediaStream so we can stop tracks on unmount
           if (!streamRef.current && controls?.stream) {
             streamRef.current = controls.stream;
           }
 
           if (result && !decodedOnceRef.current) {
             decodedOnceRef.current = true;
-            // small delay to allow UI to teardown gracefully
+            // Delay allowing UI to teardown gracefully
             setTimeout(() => {
               try {
                 onDecode?.(result.getText());
               } finally {
-                // optional: keep camera running for continuous scan
-                // here we stop after first successful decode
-                stop();
+                stop(); // optional: stop after first successful decode
               }
             }, 0);
           } else if (err && err.name !== "NotFoundException") {
-            // NotFoundException is expected during scanning; ignore it
+            // Handle error cases
             onError?.(err);
           }
         }
       );
     } catch (e) {
-      // If constraints fail (e.g., iOS without permission), fallback to a deviceId approach
+      console.error("Error in scanning: ", e);
+      // If constraints fail, try fallback to deviceId-based approach
       try {
         const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
           (d) => d.kind === "videoinput"
         );
         if (!devices.length) throw new Error("No camera found");
 
-        // Try to pick a back/environment camera by label if available
         const preferred =
           devices.find((d) => /back|environment/i.test(d.label)) || devices[0];
 
@@ -100,6 +99,7 @@ export default function QRScanner({ onDecode, onError }) {
 
         setActive(true);
       } catch (fallbackErr) {
+        console.error("Fallback error: ", fallbackErr);
         setActive(false);
         onError?.(fallbackErr || e);
       }
@@ -109,6 +109,7 @@ export default function QRScanner({ onDecode, onError }) {
   useEffect(() => {
     let mounted = true;
     if (mounted) start();
+
     return () => {
       mounted = false;
       stop();

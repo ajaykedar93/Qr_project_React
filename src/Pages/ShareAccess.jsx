@@ -5,25 +5,25 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; // backend
+const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend API base URL
 
 export default function ShareAccess() {
   const { shareId } = useParams();
   const nav = useNavigate();
 
   const [docId, setDocId] = useState(null);
-  const [access, setAccess] = useState(null);          // "public" | "private"
+  const [access, setAccess] = useState(null); // "public" | "private"
   const [recipientEmail, setRecipientEmail] = useState(null);
 
   const [email, setEmail] = useState("");
-  const [exists, setExists] = useState(null);          // true/false/null
+  const [exists, setExists] = useState(null); // true/false/null for email check
   const [checking, setChecking] = useState(false);
 
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
 
-  // 1) Load minimal share data (NO AUTH)
+  // Step 1: Load minimal share info (public/private)
   useEffect(() => {
     (async () => {
       try {
@@ -33,7 +33,7 @@ export default function ShareAccess() {
         setRecipientEmail(data.to_user_email || null);
 
         if (data.access === "public") {
-          // Public → open immediately (view-only handled by backend)
+          // Public → open directly
           nav(`/view/${data.document_id}?share_id=${shareId}`, { replace: true });
         }
       } catch (e) {
@@ -42,14 +42,19 @@ export default function ShareAccess() {
     })();
   }, [shareId, nav]);
 
-  // 2) Live email check (registered user)
+  // Step 2: Live email check against backend
   useEffect(() => {
     const value = (email || "").trim();
-    if (!value) { setExists(null); return; }
+    if (!value) {
+      setExists(null);
+      return;
+    }
     const t = setTimeout(async () => {
       try {
         setChecking(true);
-        const { data } = await axios.get(`${API_BASE}/auth/exists`, { params: { email: value }});
+        const { data } = await axios.get(`${API_BASE}/auth/exists`, {
+          params: { email: value },
+        });
         setExists(!!data?.exists);
       } catch {
         setExists(null);
@@ -60,14 +65,15 @@ export default function ShareAccess() {
     return () => clearTimeout(t);
   }, [email]);
 
+  // Helper: whether we allow sending OTP
   const canSendOtp = () => {
     if (access !== "private") return false;
     if (!email || !exists) return false;
-    // If the share has a specific recipient email, enforce it matches
     if (recipientEmail && recipientEmail.toLowerCase() !== email.toLowerCase()) return false;
     return true;
   };
 
+  // Step 3: Send OTP
   async function sendOtp() {
     try {
       if (!canSendOtp()) return;
@@ -83,14 +89,14 @@ export default function ShareAccess() {
     }
   }
 
+  // Step 4: Verify OTP → unlock document
   async function verifyOtp() {
     try {
       await axios.post(`${API_BASE}/otp/verify`, {
         share_id: shareId,
         email,
-        otp, // <-- backend expects 'otp'
+        otp,
       });
-      // store verified email for document endpoints (used as x-user-email header by your viewer)
       sessionStorage.setItem("verifiedEmail", email);
       toast.success("Verified! Opening document…");
       nav(`/view/${docId}?share_id=${shareId}`);
@@ -100,24 +106,30 @@ export default function ShareAccess() {
   }
 
   if (access === "public") {
-    // brief placeholder while redirecting
     return <div style={{ padding: 24 }}>Opening…</div>;
   }
 
+  // UI
   return (
     <div style={{ maxWidth: 520, margin: "60px auto", padding: 16 }}>
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ background: "#0f1533", padding: 24, borderRadius: 14, border: "1px solid #2a3170" }}
+        style={{
+          background: "#0f1533",
+          padding: 24,
+          borderRadius: 14,
+          border: "1px solid #2a3170",
+        }}
       >
         <h2 style={{ marginTop: 0 }}>Access Shared Document</h2>
         <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 10 }}>
           Share ID: <code>{shareId}</code>
         </div>
 
-        {/* PRIVATE FLOW */}
-        <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 15 }}>Verify your identity</div>
+        <div style={{ marginBottom: 10, fontWeight: 600, fontSize: 15 }}>
+          Verify your identity
+        </div>
 
         <div style={{ display: "grid", gap: 10 }}>
           <input
@@ -128,9 +140,13 @@ export default function ShareAccess() {
           />
           {!!email && (
             <div style={{ fontSize: 12, opacity: 0.8 }}>
-              {checking ? "Checking…" :
-                exists === true ? "Email is registered ✅" :
-                exists === false ? "Email not found ❌" : ""}
+              {checking
+                ? "Checking…"
+                : exists === true
+                ? "Email is registered ✅"
+                : exists === false
+                ? "Email not found ❌"
+                : ""}
               {recipientEmail && email && exists && (
                 <div style={{ marginTop: 4, opacity: 0.85 }}>
                   This share is intended for: <b>{recipientEmail}</b>
@@ -139,12 +155,18 @@ export default function ShareAccess() {
             </div>
           )}
 
-          <button className="btn btn-primary" onClick={sendOtp} disabled={!canSendOtp()}>
+          <button
+            className="btn btn-primary"
+            onClick={sendOtp}
+            disabled={!canSendOtp()}
+          >
             Send OTP
           </button>
 
           {otpSent && expiresAt && (
-            <div style={{ fontSize: 12, opacity: 0.7 }}>OTP expires at: {expiresAt}</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>
+              OTP expires at: {expiresAt}
+            </div>
           )}
           {otpSent && (
             <input
@@ -157,10 +179,16 @@ export default function ShareAccess() {
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-          <button className="btn btn-primary" onClick={verifyOtp} disabled={!otpSent || !otp}>
+          <button
+            className="btn btn-primary"
+            onClick={verifyOtp}
+            disabled={!otpSent || !otp}
+          >
             Verify & Open
           </button>
-          <Link className="btn" to="/dashboard">Back</Link>
+          <Link className="btn" to="/dashboard">
+            Back
+          </Link>
         </div>
       </motion.div>
     </div>

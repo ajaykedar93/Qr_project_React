@@ -1,20 +1,19 @@
 // src/Pages/Dashboard.jsx
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import QRScanner from "./QRScanner.jsx";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080"; // backend root
+const API_BASE = "https://qr-project-v0h4.onrender.com"; // your backend
 
-// Generate a QR image for the JSON payload the scanner expects: { "share_id": "..." }
+// Create a QR image for payload { share_id }
 function qrImgForShareId(share_id) {
   if (!share_id) return "";
   const payload = encodeURIComponent(JSON.stringify({ share_id }));
-  // Browser loads the image directly from a public QR generator
-  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${payload}`;
+  return `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${payload}`;
 }
 
 export default function Dashboard() {
@@ -37,26 +36,26 @@ export default function Dashboard() {
   const [myShares, setMyShares] = useState([]);
   const [received, setReceived] = useState([]);
 
-  // Share create modal
-  const [shareFor, setShareFor] = useState(null);
+  // Share modal state
+  const [shareFor, setShareFor] = useState(null); // document_id
   const [shareForm, setShareForm] = useState({
     to_user_email: "",
-    access: "private",   // UI hint only; backend decides based on registration
-    expiry_time: "",
+    expiry_time: "", // ISO string from datetime-local
   });
   const [shareResult, setShareResult] = useState(null);
 
-  // Recipient existence check
+  // Email existence check (debounced)
   const [emailCheck, setEmailCheck] = useState({ loading: false, exists: null, error: "" });
   const emailTimerRef = useRef(null);
 
-  // Share details modal
+  // “View details” modal for an existing share
   const [viewShare, setViewShare] = useState(null);
 
-  // Drag & drop upload
+  // ---- Drag & drop upload ----
   const onDrop = (accepted) => accepted?.[0] && uploadFile(accepted[0]);
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
+  // ---- Load initial data ----
   async function load() {
     try {
       setLoading(true);
@@ -70,12 +69,13 @@ export default function Dashboard() {
       setReceived(c.data || []);
     } catch (e) {
       if (e?.response?.status === 401) nav("/login");
-      else toast.error(e?.response?.data?.error || "Failed to load");
+      else toast.error(e?.response?.data?.error || "Failed to load dashboard");
     } finally {
       setLoading(false);
     }
   }
 
+  // ---- Upload ----
   async function uploadFile(file) {
     try {
       const form = new FormData();
@@ -90,6 +90,7 @@ export default function Dashboard() {
     }
   }
 
+  // ---- Delete document ----
   async function delDoc(id) {
     if (!confirm("Delete this document?")) return;
     try {
@@ -101,42 +102,39 @@ export default function Dashboard() {
     }
   }
 
-  // Revoke a share you created
+  // ---- Revoke share ----
   async function revokeShare(share_id) {
-    if (!confirm("Revoke this share? Recipients will no longer be able to access it.")) return;
+    if (!confirm("Revoke this share? Recipients will lose access.")) return;
     try {
       await api.post(`/shares/${share_id}/revoke`);
       setMyShares((arr) => arr.filter((s) => s.share_id !== share_id));
       toast.success("Share revoked");
     } catch (e) {
-      toast.error(e?.response?.data?.error || "Failed to revoke share");
+      toast.error(e?.response?.data?.error || "Failed to revoke");
     }
   }
 
-  // Create share + (optional) email notify
+  // ---- Create share ----
   async function createShare() {
     try {
       const payload = {
         document_id: shareFor,
         to_email: shareForm.to_user_email || null,
         expiry_time: shareForm.expiry_time || null,
-        // 'access' is decided server-side (registered => private, else public)
       };
 
-      // heads-up if user forced "private" but the email isn't in DB
-      if (shareForm.access === "private" && payload.to_email && emailCheck.exists === false) {
+      // Friendly note if recipient not registered
+      if (payload.to_email && emailCheck.exists === false) {
         const proceed = confirm(
-          "Recipient is not registered. You can still create the share (will be PUBLIC view-only), or ask them to register. Continue?"
+          "Recipient is not registered. You can still share (will default to PUBLIC view-only), or ask them to register. Continue?"
         );
         if (!proceed) return;
       }
 
-      // Create share
       const { data } = await api.post("/shares", payload);
-      // data contains: share_id, share_token, access, expiry_time, created_at, url
       setShareResult(data);
 
-      // Refresh "My Shares"
+      // Refresh My Shares
       const mine = await api.get("/shares/mine").then((r) => r.data || []);
       setMyShares(mine);
 
@@ -155,7 +153,7 @@ export default function Dashboard() {
     }
   }
 
-  // Debounced recipient existence check
+  // ---- Debounced email check ----
   useEffect(() => {
     const email = (shareForm.to_user_email || "").trim();
     if (emailTimerRef.current) clearTimeout(emailTimerRef.current);
@@ -178,6 +176,7 @@ export default function Dashboard() {
     return () => clearTimeout(emailTimerRef.current);
   }, [shareForm.to_user_email, api]);
 
+  // ---- Initial guard + load ----
   useEffect(() => {
     if (!localStorage.getItem("token")) {
       nav("/login");
@@ -186,6 +185,7 @@ export default function Dashboard() {
     load();
   }, []);
 
+  // ---- QR decode → route to ShareAccess ----
   const onQrDecode = (text) => {
     try {
       const payload = JSON.parse(text);
@@ -196,6 +196,7 @@ export default function Dashboard() {
     }
   };
 
+  // ---- mailto helper for quick manual email share ----
   function mailtoUrl(share) {
     const subject = encodeURIComponent("A document was shared with you via QR-Docs");
     const link = `${window.location.origin}/share/${share.share_id}`;
@@ -211,19 +212,19 @@ export default function Dashboard() {
       ``,
       `Thanks!`,
     ].join("\n");
-    return `mailto:${encodeURIComponent(share.to_user_email || "")}?subject=${subject}&body=${encodeURIComponent(
-      body
-    )}`;
+    return `mailto:${encodeURIComponent(share.to_user_email || "")}?subject=${subject}&body=${encodeURIComponent(body)}`;
   }
 
+  // ---------- UI ----------
   return (
-    <div style={{ maxWidth: 1100, margin: "24px auto", padding: "0 16px" }}>
+    <div style={{ maxWidth: 1200, margin: "24px auto", padding: "0 16px" }}>
+      {/* Top row */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
         <h2 style={{ margin: 0 }}>Dashboard</h2>
         <div style={{ marginLeft: "auto", opacity: 0.8, fontSize: 14 }}>{user?.email}</div>
       </div>
 
-      {/* Upload */}
+      {/* Upload card */}
       <motion.div
         {...getRootProps()}
         initial={{ opacity: 0, y: 8 }}
@@ -240,11 +241,11 @@ export default function Dashboard() {
         }}
       >
         <input {...getInputProps()} />
-        <div style={{ fontWeight: 700 }}>Drag & Drop to upload</div>
+        <div style={{ fontWeight: 700, fontSize: 16 }}>Drag & Drop to upload</div>
         <div style={{ opacity: 0.75, fontSize: 13 }}>or click to choose a file</div>
       </motion.div>
 
-      {/* Grid */}
+      {/* Two-column grid */}
       <div style={{ display: "grid", gap: 18, gridTemplateColumns: "1fr 1fr" }}>
         {/* My Documents */}
         <section
@@ -253,7 +254,7 @@ export default function Dashboard() {
             border: "1px solid #2a3170",
             borderRadius: 14,
             padding: 16,
-            minHeight: 260,
+            minHeight: 280,
           }}
         >
           <h3 style={{ marginTop: 0 }}>My Documents</h3>
@@ -266,13 +267,18 @@ export default function Dashboard() {
                   <th align="left">Name</th>
                   <th>Public</th>
                   <th>Size</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: "center" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {docs.map((d) => (
                   <tr key={d.document_id}>
-                    <td>{d.file_name}</td>
+                    <td>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span>{d.file_name}</span>
+                        <small style={{ opacity: 0.6 }}>{d.mime_type || "—"}</small>
+                      </div>
+                    </td>
                     <td>
                       {d.is_public ? (
                         <span className="badge" style={{ background: "#52e1c1", color: "#012" }}>Public</span>
@@ -281,7 +287,8 @@ export default function Dashboard() {
                       )}
                     </td>
                     <td style={{ textAlign: "center" }}>{d.file_size_bytes || "-"}</td>
-                    <td style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                    <td style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+                      <Link className="btn" to={`/view/${d.document_id}`}>Open</Link>
                       <button className="btn" onClick={() => setShareFor(d.document_id)}>Share</button>
                       <button className="btn btn-danger" onClick={() => delDoc(d.document_id)}>Delete</button>
                     </td>
@@ -304,7 +311,7 @@ export default function Dashboard() {
             border: "1px solid #2a3170",
             borderRadius: 14,
             padding: 16,
-            minHeight: 260,
+            minHeight: 280,
           }}
         >
           <h3 style={{ marginTop: 0 }}>My Shares</h3>
@@ -317,16 +324,16 @@ export default function Dashboard() {
                   <th align="left">Document</th>
                   <th>Access</th>
                   <th>To</th>
-                  <th>QR / Link / Actions</th>
+                  <th style={{ textAlign: "center" }}>QR / Link / Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {myShares.map((s) => {
-                  const qrImg = qrImgForShareId(s.share_id);
+                  const qr = qrImgForShareId(s.share_id);
                   return (
                     <tr key={s.share_id}>
                       <td>
-                        <button className="btn" onClick={() => setViewShare(s)} title="Open share details">
+                        <button className="btn" onClick={() => setViewShare(s)} title="Share details">
                           {s.file_name || s.document_id}
                         </button>
                       </td>
@@ -342,19 +349,16 @@ export default function Dashboard() {
                       </td>
                       <td style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
                         <img
-                          src={qrImg}
+                          src={qr}
                           alt="QR"
-                          style={{ width: 40, height: 40, background: "#fff", borderRadius: 6, padding: 3, cursor: "pointer" }}
+                          style={{ width: 44, height: 44, background: "#fff", borderRadius: 6, padding: 3, cursor: "pointer" }}
                           onClick={() => setViewShare(s)}
-                          title="Preview QR"
                         />
                         <a className="btn" href={`${window.location.origin}/share/${s.share_id}`} target="_blank" rel="noreferrer">
                           Open
                         </a>
                         {s.to_user_email && <a className="btn" href={mailtoUrl(s)}>Email</a>}
-                        <button className="btn btn-danger" onClick={() => revokeShare(s.share_id)}>
-                          Revoke
-                        </button>
+                        <button className="btn btn-danger" onClick={() => revokeShare(s.share_id)}>Revoke</button>
                       </td>
                     </tr>
                   );
@@ -378,7 +382,7 @@ export default function Dashboard() {
           border: "1px solid #2a3170",
           borderRadius: 14,
           padding: 16,
-          minHeight: 260,
+          minHeight: 280,
         }}
       >
         <h3 style={{ marginTop: 0 }}>Received Documents</h3>
@@ -396,7 +400,7 @@ export default function Dashboard() {
             </thead>
             <tbody>
               {received.map((r) => {
-                const qrImg = qrImgForShareId(r.share_id);
+                const qr = qrImgForShareId(r.share_id);
                 return (
                   <tr key={r.share_id}>
                     <td>
@@ -411,7 +415,7 @@ export default function Dashboard() {
                     </td>
                     <td style={{ textAlign: "center" }}>
                       <img
-                        src={qrImg}
+                        src={qr}
                         alt="QR"
                         style={{ width: 56, height: 56, background: "#fff", borderRadius: 6, padding: 4, cursor: "pointer" }}
                         onClick={() => setViewShare(r)}
@@ -432,96 +436,151 @@ export default function Dashboard() {
           </table>
         )}
 
+        {/* Scanner */}
         <div style={{ marginTop: 14 }}>
           <h4 style={{ margin: "14px 0 8px" }}>Scan QR</h4>
           <QRScanner onDecode={onQrDecode} onError={(e) => console.warn(e)} />
         </div>
       </section>
 
-      {/* MODAL: Create Share */}
+      {/* Share modal */}
       <AnimatePresence>
         {shareFor && (
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)" }}
-            onClick={() => { setShareFor(null); setShareResult(null); setEmailCheck({ loading:false, exists:null, error:"" }); }}
+            onClick={() => {
+              setShareFor(null);
+              setShareResult(null);
+              setEmailCheck({ loading: false, exists: null, error: "" });
+              setShareForm({ to_user_email: "", expiry_time: "" });
+            }}
           >
             <motion.div
               onClick={(e) => e.stopPropagation()}
-              initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
-              style={{ maxWidth: 560, margin: "7% auto", background: "#0f1533", border: "1px solid #2a3170", padding: 18, borderRadius: 14 }}
+              initial={{ y: 28, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 20, opacity: 0 }}
+              style={{
+                maxWidth: 620,
+                margin: "6% auto",
+                background: "#0f1533",
+                border: "1px solid #2a3170",
+                padding: 20,
+                borderRadius: 16,
+              }}
             >
               <h3 style={{ marginTop: 0 }}>Share document</h3>
-              <div style={{ display: "grid", gap: 10 }}>
+
+              <div style={{ display: "grid", gap: 12 }}>
                 <div>
+                  <label style={{ fontSize: 13, opacity: 0.8 }}>Recipient email (optional for public)</label>
                   <input
                     className="input"
-                    placeholder="Recipient email (optional for public)"
+                    placeholder="you@example.com"
                     value={shareForm.to_user_email}
                     onChange={(e) => setShareForm((s) => ({ ...s, to_user_email: e.target.value }))}
                   />
-                  {shareForm.to_user_email?.trim() && (
+                  {!!shareForm.to_user_email?.trim() && (
                     <div style={{ marginTop: 6, display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}>
-                      {emailCheck.loading && <span style={{ opacity: .8 }}>Checking…</span>}
+                      {emailCheck.loading && <span style={{ opacity: 0.8 }}>Checking…</span>}
                       {!emailCheck.loading && emailCheck.exists === true && (
-                        <span className="badge" style={{ background: "#52e1c1", color: "#012" }}>Registered ✅</span>
+                        <span className="badge" style={{ background: "#52e1c1", color: "#012" }}>Registered ✅ — suggest <b>Private</b></span>
                       )}
                       {!emailCheck.loading && emailCheck.exists === false && (
-                        <>
-                          <span className="badge" style={{ background: "#ff7c7c55", color: "#ffbdbd" }}>Not registered</span>
-                          {shareForm.access === "private" ? (
-                            <span style={{ opacity: .85 }}>
-                              Tip: switch to <b>Public</b> (view-only), or ask them to register.
-                            </span>
-                          ) : (
-                            <span style={{ opacity: .85 }}>They can open the public link (view-only).</span>
-                          )}
-                        </>
+                        <span className="badge" style={{ background: "#ffb3b366", color: "#ffd4d4" }}>
+                          Not registered — suggest <b>Public (view-only)</b>
+                        </span>
                       )}
                     </div>
                   )}
                 </div>
 
-                <select
-                  className="input"
-                  value={shareForm.access}
-                  onChange={(e) => setShareForm((s) => ({ ...s, access: e.target.value }))}
-                >
-                  <option value="private">Private (OTP + decrypt)</option>
-                  <option value="public">Public (view-only)</option>
-                </select>
-                <input
-                  className="input"
-                  type="datetime-local"
-                  value={shareForm.expiry_time}
-                  onChange={(e) => setShareForm((s) => ({ ...s, expiry_time: e.target.value }))}
-                />
+                <div>
+                  <label style={{ fontSize: 13, opacity: 0.8 }}>Expiry time (optional)</label>
+                  <input
+                    className="input"
+                    type="datetime-local"
+                    value={shareForm.expiry_time}
+                    onChange={(e) => setShareForm((s) => ({ ...s, expiry_time: e.target.value }))}
+                  />
+                  <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
+                    Leave blank for no expiry. Past time is rejected by server.
+                  </div>
+                </div>
               </div>
 
-              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
                 <button className="btn btn-primary" onClick={createShare}>Create Share</button>
-                <button className="btn" onClick={() => { setShareFor(null); setShareResult(null); }}>Close</button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setShareFor(null);
+                    setShareResult(null);
+                    setEmailCheck({ loading: false, exists: null, error: "" });
+                    setShareForm({ to_user_email: "", expiry_time: "" });
+                  }}
+                >
+                  Close
+                </button>
               </div>
 
               {shareResult && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <span style={{ opacity: 0.8, fontSize: 13 }}>
-                      Access: {shareResult.access?.toUpperCase?.() || shareForm.access.toUpperCase()}
+                      Access: {shareResult.access?.toUpperCase?.() || (emailCheck.exists ? "PRIVATE" : "PUBLIC")}
                     </span>
+                    {shareResult.expiry_time && (
+                      <span className="badge" style={{ background: "#2a3170" }}>
+                        Expires: {shareResult.expiry_time}
+                      </span>
+                    )}
                   </div>
-                  <div style={{ marginTop: 10 }}>
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
                     <img
                       alt="QR"
                       src={qrImgForShareId(shareResult.share_id)}
-                      style={{ width: 180, height: 180, borderRadius: 8, background: "#fff", padding: 8 }}
+                      style={{ width: 200, height: 200, borderRadius: 8, background: "#fff", padding: 8 }}
                     />
-                  </div>
-                  {shareResult.url && (
-                    <div style={{ marginTop: 8, fontSize: 13, opacity: 0.85 }}>
-                      Share link: <code>{shareResult.url}</code>
+                    <div style={{ fontSize: 13, opacity: 0.9 }}>
+                      <div>
+                        Link:&nbsp;
+                        <a
+                          href={`${window.location.origin}/share/${shareResult.share_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: "#6c8bff" }}
+                        >
+                          {window.location.origin}/share/{shareResult.share_id}
+                        </a>
+                      </div>
+                      <div style={{ marginTop: 8 }}>
+                        <button
+                          className="btn"
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              `${window.location.origin}/share/${shareResult.share_id}`
+                            );
+                            toast.success("Link copied");
+                          }}
+                        >
+                          Copy link
+                        </button>
+                        {shareForm.to_user_email && (
+                          <a
+                            className="btn"
+                            style={{ marginLeft: 8 }}
+                            href={mailtoUrl({
+                              ...shareResult,
+                              to_user_email: shareForm.to_user_email,
+                            })}
+                          >
+                            Email link
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
             </motion.div>
@@ -529,7 +588,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* MODAL: View Share */}
+      {/* View-share modal (read-only info + QR) */}
       <AnimatePresence>
         {viewShare && (
           <motion.div

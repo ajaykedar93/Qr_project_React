@@ -1,5 +1,5 @@
 // src/App.jsx
-import { useEffect, useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -10,6 +10,7 @@ import Login from "./Pages/Login.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
 import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
+import NotFound from "./Pages/NotFound.jsx";
 
 // ---------- Helpers ----------
 function isAuthed() {
@@ -151,26 +152,5 @@ export default function App() {
 
       <ToastContainer position="top-right" autoClose={2500} theme="dark" />
     </BrowserRouter>
-  );
-}
-
-function NotFound() {
-  return (
-    <div style={{ maxWidth: 700, margin: "60px auto", padding: 16 }}>
-      <div
-        style={{
-          background: "#0f1533",
-          border: "1px solid #2a3170",
-          borderRadius: 14,
-          padding: 24,
-        }}
-      >
-        <h2 style={{ marginTop: 0 }}>Page not found</h2>
-        <p style={{ opacity: 0.8 }}>
-          The page you’re looking for doesn’t exist. Go back to{" "}
-          <Link to="/dashboard">Dashboard</Link> or <Link to="/login">Login</Link>.
-        </p>
-      </div>
-    </div>
   );
 }
