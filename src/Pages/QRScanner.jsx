@@ -1,48 +1,76 @@
+// src/Pages/QRScanner.jsx
 import { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
-export default function QRScanner({ onDecode, onError }) {
+const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend API (Render)
+
+export default function QRScanner() {
   const videoRef = useRef(null);
   const readerRef = useRef(null);
   const streamRef = useRef(null);
   const decodedOnceRef = useRef(false);
-
   const [active, setActive] = useState(false);
+  const nav = useNavigate();
 
   const stop = useCallback(() => {
     try {
       readerRef.current?.reset();
-    } catch (e) {
-      console.error("Error stopping QR scanner: ", e);
-    }
-
+    } catch {}
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-
     setActive(false);
   }, []);
 
-  const start = useCallback(async () => {
-    stop(); // ensure clean start
-    decodedOnceRef.current = false;
-
+  const handleDecode = useCallback(async (text) => {
     try {
-      // Init reader once
-      if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
+      // text should carry shareId or token. Example: https://yourapp/view?share_id=...
+      let shareId = null;
+      try {
+        const url = new URL(text);
+        shareId = url.searchParams.get("share_id") || url.searchParams.get("id");
+      } catch {
+        // If QR just encoded the ID itself
+        shareId = text;
+      }
 
-      // Prefer rear camera via constraints
+      if (!shareId) {
+        toast.error("Invalid QR code");
+        return;
+      }
+
+      // Hit backend to check access
+      const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`);
+
+      if (data.access === "public") {
+        // Public → go straight to viewer
+        nav(`/view/${data.document_id}?share_id=${shareId}`);
+      } else if (data.access === "private") {
+        // Private → go to ShareAccess page (email + OTP flow)
+        nav(`/share/${shareId}`);
+      } else {
+        toast.error("Invalid or expired share");
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "QR scan failed");
+    }
+  }, [nav]);
+
+  const start = useCallback(async () => {
+    stop();
+    decodedOnceRef.current = false;
+    try {
+      if (!readerRef.current) readerRef.current = new BrowserMultiFormatReader();
       setActive(true);
 
       await readerRef.current.decodeFromConstraints(
         {
           audio: false,
-          video: {
-            facingMode: { ideal: "environment" },
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
+          video: { facingMode: { ideal: "environment" } },
         },
         videoRef.current,
         (result, err, controls) => {
@@ -52,68 +80,23 @@ export default function QRScanner({ onDecode, onError }) {
 
           if (result && !decodedOnceRef.current) {
             decodedOnceRef.current = true;
-            // Delay allowing UI to teardown gracefully
-            setTimeout(() => {
-              try {
-                onDecode?.(result.getText());
-              } finally {
-                stop(); // optional: stop after first successful decode
-              }
-            }, 0);
+            handleDecode(result.getText());
+            stop(); // stop after first decode
           } else if (err && err.name !== "NotFoundException") {
-            // Handle error cases
-            onError?.(err);
+            console.error("Decode error:", err);
           }
         }
       );
     } catch (e) {
-      console.error("Error in scanning: ", e);
-      // If constraints fail, try fallback to deviceId-based approach
-      try {
-        const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
-          (d) => d.kind === "videoinput"
-        );
-        if (!devices.length) throw new Error("No camera found");
-
-        const preferred =
-          devices.find((d) => /back|environment/i.test(d.label)) || devices[0];
-
-        await readerRef.current.decodeFromVideoDevice(
-          preferred.deviceId,
-          videoRef.current,
-          (result, err) => {
-            if (result && !decodedOnceRef.current) {
-              decodedOnceRef.current = true;
-              setTimeout(() => {
-                try {
-                  onDecode?.(result.getText());
-                } finally {
-                  stop();
-                }
-              }, 0);
-            } else if (err && err.name !== "NotFoundException") {
-              onError?.(err);
-            }
-          }
-        );
-
-        setActive(true);
-      } catch (fallbackErr) {
-        console.error("Fallback error: ", fallbackErr);
-        setActive(false);
-        onError?.(fallbackErr || e);
-      }
+      console.error("Camera init error:", e);
+      toast.error("Unable to start camera");
+      setActive(false);
     }
-  }, [onDecode, onError, stop]);
+  }, [stop, handleDecode]);
 
   useEffect(() => {
-    let mounted = true;
-    if (mounted) start();
-
-    return () => {
-      mounted = false;
-      stop();
-    };
+    start();
+    return () => stop();
   }, [start, stop]);
 
   return (
