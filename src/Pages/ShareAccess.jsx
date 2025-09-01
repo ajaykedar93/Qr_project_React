@@ -1,15 +1,20 @@
 // src/Pages/ShareAccess.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
 const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 export default function ShareAccess() {
   const { shareId } = useParams();
+  const [sp] = useSearchParams();
   const nav = useNavigate();
+
+  // Support token-based links: /share/:shareId?token=...
+  const tokenParam = sp.get("token") || "";
 
   // Share state
   const [docId, setDocId] = useState(null);
@@ -20,23 +25,28 @@ export default function ShareAccess() {
 
   // Email check
   const [email, setEmail] = useState("");
-  const [exists, setExists] = useState(null);
+  const [exists, setExists] = useState(null); // true/false/null(unknown)
   const [checking, setChecking] = useState(false);
+  const [emailMsg, setEmailMsg] = useState("");
   const checkSeqRef = useRef(0);
 
-  // OTP
+  // OTP state
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [expiresAt, setExpiresAt] = useState("");
+  const [expiresAt, setExpiresAt] = useState(""); // ISO string from server (optional)
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [resendIn, setResendIn] = useState(0); // seconds cooldown for resend
 
-  // Build viewer URL
+  // Build viewer URL (forward token if present)
   const viewerUrl = useMemo(() => {
     if (!docId) return "";
-    const base = `/view/${docId}?share_id=${encodeURIComponent(shareId)}`;
-    return access === "public" ? `${base}&viewOnly=1` : base;
-  }, [docId, shareId, access]);
+    const u = new URL(window.location.origin + `/view/${docId}`);
+    u.searchParams.set("share_id", shareId);
+    if (tokenParam) u.searchParams.set("token", tokenParam);
+    if (access === "public") u.searchParams.set("viewOnly", "1");
+    return u.pathname + u.search;
+  }, [docId, shareId, access, tokenParam]);
 
   // Load share info
   useEffect(() => {
@@ -44,14 +54,22 @@ export default function ShareAccess() {
     (async () => {
       try {
         setLoadingShare(true);
-        const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`);
+        const { data } = await axios.get(`${API_BASE}/shares/${shareId}/minimal`, {
+          params: tokenParam ? { token: tokenParam } : {},
+        });
         if (ignore) return;
+
         setDocId(data.document_id);
         setAccess(data.access);
         setRecipientEmail(data.to_user_email || null);
 
         if (data.access === "public") {
-          nav(`/view/${data.document_id}?share_id=${shareId}&viewOnly=1`, { replace: true });
+          // Public: jump straight to viewer (pass token if present)
+          const u = new URL(window.location.origin + `/view/${data.document_id}`);
+          u.searchParams.set("share_id", shareId);
+          if (tokenParam) u.searchParams.set("token", tokenParam);
+          u.searchParams.set("viewOnly", "1");
+          nav(u.pathname + u.search, { replace: true });
         }
       } catch (e) {
         const msg = e?.response?.data?.error || "Invalid or expired share";
@@ -62,22 +80,36 @@ export default function ShareAccess() {
       }
     })();
     return () => { ignore = true; };
-  }, [shareId, nav]);
+  }, [shareId, tokenParam, nav]);
 
-  // Email existence check (debounced)
+  // Debounced email existence check
   useEffect(() => {
     const raw = (email || "").trim();
-    if (!raw) { setExists(null); setChecking(false); return; }
-    const value = raw.toLowerCase();
+    if (!raw) { setExists(null); setChecking(false); setEmailMsg(""); return; }
+
+    if (!emailRe.test(raw)) {
+      setExists(null);
+      setChecking(false);
+      setEmailMsg("Enter a valid email address.");
+      return;
+    }
+
     setChecking(true);
+    setEmailMsg("");
     const seq = ++checkSeqRef.current;
 
     const t = setTimeout(async () => {
       try {
-        const { data } = await axios.get(`${API_BASE}/auth/exists`, { params: { email: value } });
-        if (checkSeqRef.current === seq) setExists(!!data?.exists);
+        // Prefer a single canonical endpoint if you have it
+        const { data } = await axios.get(`${API_BASE}/auth/exists`, { params: { email: raw.toLowerCase() } });
+        if (checkSeqRef.current !== seq) return;
+        setExists(!!data?.exists);
+        if (data?.exists) setEmailMsg("Email is registered ✅");
+        else setEmailMsg("Email not registered.");
       } catch {
-        if (checkSeqRef.current === seq) setExists(null);
+        if (checkSeqRef.current !== seq) return;
+        setExists(null);
+        setEmailMsg("Could not verify email right now.");
       } finally {
         if (checkSeqRef.current === seq) setChecking(false);
       }
@@ -93,22 +125,34 @@ export default function ShareAccess() {
   const canSendOtp =
     access === "private" &&
     !!email &&
+    emailRe.test(email) &&
     exists === true &&
-    emailMatchesIntended;
+    emailMatchesIntended &&
+    resendIn === 0 &&
+    !sendingOtp;
+
+  // Resend cooldown tick
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setInterval(() => setResendIn((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendIn]);
 
   // Send OTP
   async function sendOtp() {
     if (!canSendOtp) {
-      toast.error("Enter correct registered email for this share");
+      toast.error(emailMatchesIntended ? "Enter your registered email" : `This link is intended for ${recipientEmail}`);
       return;
     }
     try {
       setSendingOtp(true);
       const { data } = await axios.post(`${API_BASE}/shares/${shareId}/otp/send`, {
         email: (email || "").trim().toLowerCase(),
+        ...(tokenParam ? { token: tokenParam } : {}),
       });
       setOtpSent(true);
       setExpiresAt(data?.expires_at || "");
+      setResendIn(45); // small cooldown
       toast.success("OTP sent to your email");
     } catch (e) {
       toast.error(e?.response?.data?.error || "Failed to send OTP");
@@ -125,10 +169,11 @@ export default function ShareAccess() {
       await axios.post(`${API_BASE}/shares/${shareId}/otp/verify`, {
         email: (email || "").trim().toLowerCase(),
         otp,
+        ...(tokenParam ? { token: tokenParam } : {}),
       });
       sessionStorage.setItem("verifiedEmail", (email || "").trim().toLowerCase());
       toast.success("Verified! Opening document…");
-      nav(viewerUrl);
+      nav(viewerUrl, { replace: true });
     } catch (e) {
       toast.error(e?.response?.data?.error || "Invalid or expired OTP");
     } finally {
@@ -136,7 +181,9 @@ export default function ShareAccess() {
     }
   }
 
-  if (access === "public") return <div style={{ padding: 24 }}>Opening…</div>;
+  if (access === "public") {
+    return <div style={{ padding: 24 }}>Opening…</div>;
+  }
 
   return (
     <div style={{ maxWidth: 640, margin: "56px auto", padding: "0 16px" }}>
@@ -153,16 +200,22 @@ export default function ShareAccess() {
           cursor: pointer;
           font-weight: 600;
         }
-        .btn-primary { background: #19d3a2; color: #fff; }
-        .btn-primary:hover { background: #12c39a; }
+        .btn-primary { background: linear-gradient(90deg,#5b8cff,#19d3a2); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.05); }
+        .btn-ghost { background: #eef2ff; color: #2b3c6b; }
         .btn-danger { background: #ff6b6b; color: #fff; }
-        .btn-danger:hover { background: #e55; }
+        .btn-danger:hover { filter: brightness(1.05); }
         .input {
           padding: 10px;
-          border-radius: 8px;
-          border: 1px solid #2a3170;
-          background: #fff;
-          color: #111;
+          border-radius: 10px;
+          border: 1px solid #d8e2ff;
+          background: #f8fbff;
+          color: #142251;
+          width: 100%;
+        }
+        .chip {
+          display:inline-block; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:800;
+          border:1px solid #dbe6ff; background:#eaf1ff; color:#2b54c1;
         }
       `}</style>
 
@@ -201,7 +254,7 @@ export default function ShareAccess() {
         </div>
 
         <div style={{ fontSize: 13, opacity: .85, marginBottom: 10 }}>
-          Share ID: <code>{shareId}</code>
+          Share ID: <code>{shareId}</code> {tokenParam && <span className="chip" style={{ marginLeft: 8 }}>token</span>}
         </div>
 
         {/* PRIVATE FLOW */}
@@ -234,33 +287,34 @@ export default function ShareAccess() {
               {!!email && (
                 <div style={{ fontSize: 12 }}>
                   {checking && <span style={{ opacity: .85 }}>Checking…</span>}
-                  {!checking && exists === true && emailMatchesIntended && (
-                    <span style={{ color: "#009966" }}>Email is registered ✅</span>
+                  {!checking && !!emailMsg && (
+                    <span style={{ color:
+                      exists === true ? "#009966" :
+                      exists === false ? "#cc0000" : "#555" }}>
+                      {emailMsg}
+                    </span>
                   )}
                   {!checking && exists === true && !emailMatchesIntended && (
-                    <span style={{ color: "#cc6600" }}>
-                      This share is intended for <b>{recipientEmail}</b>.
-                    </span>
-                  )}
-                  {!checking && exists === false && (
-                    <span style={{ color: "#cc0000" }}>
-                      Access denied: email isn’t registered.
-                    </span>
+                    <div style={{ color: "#cc6600" }}>
+                      This link is intended for <b>{recipientEmail}</b>.
+                    </div>
                   )}
                 </div>
               )}
 
-              <button className="btn btn-primary" onClick={sendOtp} disabled={!canSendOtp || sendingOtp}>
-                {sendingOtp ? "Sending…" : "Send OTP"}
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button className="btn btn-primary" onClick={sendOtp} disabled={!canSendOtp}>
+                  {sendingOtp ? "Sending…" : (resendIn ? `Resend in ${resendIn}s` : (otpSent ? "Resend OTP" : "Send OTP"))}
+                </button>
+                {otpSent && expiresAt && (
+                  <div style={{ fontSize: 12, opacity: .75, alignSelf: "center" }}>
+                    OTP expires at: {expiresAt}
+                  </div>
+                )}
+              </div>
 
               {otpSent && (
                 <>
-                  {expiresAt && (
-                    <div style={{ fontSize: 12, opacity: .75 }}>
-                      OTP expires at: {expiresAt}
-                    </div>
-                  )}
                   <input
                     className="input"
                     placeholder="Enter OTP"
@@ -277,11 +331,11 @@ export default function ShareAccess() {
               <button className="btn btn-primary" onClick={verifyOtp} disabled={!otpSent || !otp || verifying}>
                 {verifying ? "Verifying…" : "Verify & Open"}
               </button>
-              <Link className="btn btn-danger" to="/dashboard">Back</Link>
+              <Link className="btn btn-ghost" to="/dashboard">Back</Link>
             </div>
 
             <div style={{ marginTop: 12, fontSize: 12.5, opacity: .8 }}>
-              <b>Note:</b> Document will be decrypted only after successful verification.
+              <b>Note:</b> Document will be available only after successful verification.
             </div>
           </>
         )}

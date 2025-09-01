@@ -211,5 +211,5 @@ export default function Register() {
         </div>
       </motion.form>
     </div>
-  );
+  ); 
 }
