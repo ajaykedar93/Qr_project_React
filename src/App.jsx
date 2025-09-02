@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState, useEffect, useCallback } from "react";
 import {
   BrowserRouter,
@@ -20,14 +21,16 @@ import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 
-/* ---------- Theme (professional purple navbar) ---------- */
+/* ---------- Theme (Purple + Deep) ---------- */
 const THEME = {
-  bg: "#f8f9fa",          // app/page background (lighter for contrast)
-  barBg: "#6f42c1",       // topbar background (primary purple)
-  barBorder: "#5a32a3",   // darker purple border
-  barInk: "#ffffff",      // topbar text (white)
-  barHover: "#59359c",    // hover effect for nav links
-  cardBorder: "#d6d6f5",  // subtle purple border for cards
+  bg: "#0f0c16",         // app/page background (pairs well with your dark theme)
+  pageMinH: "100vh",
+  barBgFrom: "#6d28d9",  // purple-600
+  barBgTo: "#a21caf",    // fuchsia-700
+  barBorder: "#7c3aed",  // purple-500
+  barInk: "#f7ecff",     // light ink
+  cardBorder: "#3b2a5a",
+  lightGlass: "rgba(255,255,255,.08)",
 };
 
 function isAuthed() {
@@ -36,11 +39,19 @@ function isAuthed() {
 
 function useAuthUser() {
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("user") || "{}"); } catch { return {}; }
+    try {
+      return JSON.parse(localStorage.getItem("user") || "{}");
+    } catch {
+      return {};
+    }
   });
   useEffect(() => {
     const onAuth = () => {
-      try { setUser(JSON.parse(localStorage.getItem("user") || "{}")); } catch { setUser({}); }
+      try {
+        setUser(JSON.parse(localStorage.getItem("user") || "{}"));
+      } catch {
+        setUser({});
+      }
     };
     window.addEventListener("auth", onAuth);
     return () => window.removeEventListener("auth", onAuth);
@@ -63,15 +74,17 @@ function UnauthedOnly({ children }) {
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
+    // scroll to top on route change
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, search]);
   return null;
 }
 
-/* ---------- Layout ---------- */
+/* ---------- Layout: Topbar (Responsive) ---------- */
 function Topbar() {
   const user = useAuthUser();
   const nav = useNavigate();
+  const [open, setOpen] = useState(false);
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
@@ -81,64 +94,131 @@ function Topbar() {
     nav("/login", { replace: true });
   }, [nav]);
 
-  const linkStyle = {
-    padding: "6px 12px",
-    borderRadius: "6px",
-    textDecoration: "none",
+  // Close mobile menu on navigation
+  useEffect(() => {
+    const closeOnRoute = () => setOpen(false);
+    window.addEventListener("popstate", closeOnRoute);
+    return () => window.removeEventListener("popstate", closeOnRoute);
+  }, []);
+
+  const barStyle = {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "10px 16px",
+    background: `linear-gradient(135deg, ${THEME.barBgFrom}, ${THEME.barBgTo})`,
     color: THEME.barInk,
-    fontWeight: 500,
-    transition: "background 0.2s",
+    borderBottom: `1px solid ${THEME.barBorder}`,
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    // Glass sheen
+    boxShadow: "0 10px 30px rgba(0,0,0,.35)",
   };
 
-  const hoverStyle = {
-    background: THEME.barHover,
+  const brandStyle = {
+    color: THEME.barInk,
+    textDecoration: "none",
+    fontWeight: 900,
+    letterSpacing: 0.4,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: "clamp(16px, 3.2vw, 20px)",
+    whiteSpace: "nowrap",
+  };
+
+  const navWrap = {
+    marginLeft: 12,
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  };
+
+  const rightWrap = {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+  };
+
+  const btnBase = {
+    border: `1px solid ${THEME.lightGlass}`,
+    background: "rgba(0,0,0,.15)",
+    color: THEME.barInk,
+    padding: "8px 12px",
+    borderRadius: 10,
+    cursor: "pointer",
+    transition: "transform .14s ease, box-shadow .22s ease, filter .14s ease",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    fontSize: 14,
+  };
+
+  const btnHover = (s) => ({
+    ...btnBase,
+    ...s,
+  });
+
+  const burgerBtn = {
+    marginLeft: "auto",
+    border: "none",
+    background: "transparent",
+    color: THEME.barInk,
+    padding: 8,
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    cursor: "pointer",
   };
 
   return (
-    <header
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "10px 16px",
-        background: THEME.barBg,
-        color: THEME.barInk,
-        borderBottom: `1px solid ${THEME.barBorder}`,
-        position: "sticky",
-        top: 0,
-        zIndex: 20,
-      }}
-    >
-      <Link
-        to="/"
-        style={{
-          color: THEME.barInk,
-          textDecoration: "none",
-          fontWeight: 800,
-          letterSpacing: 0.3,
-          fontSize: 18,
-        }}
-      >
-        Secure-Docs
+    <header style={barStyle}>
+      <Link to="/" style={brandStyle} aria-label="Secure-Doc Home">
+        {/* Simple lock logo */}
+        <span
+          aria-hidden
+          style={{
+            width: 22,
+            height: 22,
+            borderRadius: 6,
+            background: "rgba(255,255,255,.2)",
+            display: "inline-grid",
+            placeItems: "center",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.25)",
+          }}
+        >
+          🔒
+        </span>
+        Secure-Doc
       </Link>
 
-      {/* Navbar links */}
-      <nav style={{ display: "flex", gap: 10, marginLeft: 12 }}>
+      {/* Desktop nav */}
+      <nav
+        style={{
+          ...navWrap,
+          display: "none",
+        }}
+        className="nav-desktop"
+      >
         {isAuthed() && (
           <>
             <Link
+              className="btn btn-light"
               to="/dashboard"
-              style={linkStyle}
-              onMouseOver={(e) => Object.assign(e.target.style, hoverStyle)}
-              onMouseOut={(e) => Object.assign(e.target.style, linkStyle)}
+              style={btnBase}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
             >
               Dashboard
             </Link>
             <Link
+              className="btn btn-light"
               to="/scan"
-              style={linkStyle}
-              onMouseOver={(e) => Object.assign(e.target.style, hoverStyle)}
-              onMouseOut={(e) => Object.assign(e.target.style, linkStyle)}
+              style={btnBase}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
             >
               Scan QR
             </Link>
@@ -146,20 +226,165 @@ function Topbar() {
         )}
       </nav>
 
-      {/* Right side (auth actions) */}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Right section (desktop) */}
+      <div
+        style={{
+          ...rightWrap,
+          display: "none",
+        }}
+        className="right-desktop"
+      >
         {isAuthed() ? (
           <>
-            <span style={{ fontSize: 13, opacity: 0.95 }}>{user?.email}</span>
-            <button className="btn btn-danger btn-sm" onClick={logout}>Logout</button>
+            <span style={{ fontSize: 13, opacity: 0.95, whiteSpace: "nowrap" }}>
+              {user?.email}
+            </span>
+            <button
+              className="btn btn-danger"
+              onClick={logout}
+              style={btnHover({
+                background: "rgba(255,0,0,.15)",
+                border: "1px solid rgba(255,0,0,.25)",
+              })}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+            >
+              Logout
+            </button>
           </>
         ) : (
           <>
-            <Link className="btn btn-light btn-sm" to="/login">Login</Link>
-            <Link className="btn btn-dark btn-sm" to="/register">Register</Link>
+            <Link
+              className="btn btn-light"
+              to="/login"
+              style={btnBase}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+            >
+              Login
+            </Link>
+            <Link
+              className="btn btn-dark"
+              to="/register"
+              style={btnHover({
+                background: "rgba(255,255,255,.1)",
+                border: `1px solid ${THEME.lightGlass}`,
+              })}
+              onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+            >
+              Register
+            </Link>
           </>
         )}
       </div>
+
+      {/* Mobile burger */}
+      <button
+        aria-label="Toggle menu"
+        aria-expanded={open}
+        aria-controls="mobile-menu"
+        style={{ ...burgerBtn, display: "inline-flex" }}
+        className="burger"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {/* simple burger icon */}
+        <svg width="24" height="24" viewBox="0 0 24 24" role="img">
+          <path
+            d="M4 6h16M4 12h16M4 18h16"
+            stroke={THEME.barInk}
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+
+      {/* Mobile sheet */}
+      <div
+        id="mobile-menu"
+        style={{
+          position: "fixed",
+          inset: "56px 8px auto 8px",
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06))",
+          border: `1px solid ${THEME.lightGlass}`,
+          borderRadius: 14,
+          backdropFilter: "blur(8px)",
+          padding: 12,
+          display: open ? "grid" : "none",
+          gap: 8,
+          zIndex: 60,
+          boxShadow: "0 20px 48px rgba(0,0,0,.45)",
+        }}
+      >
+        {isAuthed() ? (
+          <>
+            <Link
+              to="/dashboard"
+              onClick={() => setOpen(false)}
+              style={btnHover({ textAlign: "center" })}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/scan"
+              onClick={() => setOpen(false)}
+              style={btnHover({ textAlign: "center" })}
+            >
+              Scan QR
+            </Link>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr auto",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <span style={{ fontSize: 13, opacity: 0.95, overflow: "hidden", textOverflow: "ellipsis" }}>
+                {user?.email}
+              </span>
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  logout();
+                }}
+                style={btnHover({
+                  background: "rgba(255,0,0,.15)",
+                  border: "1px solid rgba(255,0,0,.25)",
+                })}
+              >
+                Logout
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/login"
+              onClick={() => setOpen(false)}
+              style={btnHover({ textAlign: "center" })}
+            >
+              Login
+            </Link>
+            <Link
+              to="/register"
+              onClick={() => setOpen(false)}
+              style={btnHover({ textAlign: "center" })}
+            >
+              Register
+            </Link>
+          </>
+        )}
+      </div>
+
+      {/* Small CSS to toggle desktop vs mobile */}
+      <style>{`
+        @media (min-width: 860px) {
+          .nav-desktop, .right-desktop { display: flex !important; }
+          .burger { display: none !important; }
+        }
+      `}</style>
     </header>
   );
 }
@@ -169,16 +394,24 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div style={{ background: THEME.bg, minHeight: "100vh" }}>
+      <div style={{ background: THEME.bg, minHeight: THEME.pageMinH }}>
         <Topbar />
 
         <main style={{ minHeight: "calc(100vh - 56px)" }}>
           <Routes>
+            {/* Root: send to dashboard if authed, else login */}
             <Route
               path="/"
-              element={isAuthed() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
+              element={
+                isAuthed() ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
             />
 
+            {/* Auth pages (blocked if already authed) */}
             <Route
               path="/login"
               element={
@@ -196,9 +429,11 @@ export default function App() {
               }
             />
 
+            {/* Public entry for share/verify and viewer */}
             <Route path="/share/:shareId" element={<ShareAccess />} />
             <Route path="/view/:documentId" element={<ViewDoc />} />
 
+            {/* QR Scanner */}
             <Route
               path="/scan"
               element={
@@ -208,6 +443,7 @@ export default function App() {
               }
             />
 
+            {/* App area */}
             <Route
               path="/dashboard"
               element={
@@ -217,11 +453,13 @@ export default function App() {
               }
             />
 
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
 
-        <ToastContainer position="top-right" autoClose={2500} theme="light" />
+        {/* Toasts adapt fine on dark/purple background */}
+        <ToastContainer position="top-right" autoClose={2500} theme="dark" />
       </div>
     </BrowserRouter>
   );
