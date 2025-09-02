@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useState, useEffect, useCallback } from "react";
 import {
   BrowserRouter,
@@ -21,13 +20,14 @@ import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 
-/* ---------- Theme (bright green) ---------- */
+/* ---------- Theme (professional purple navbar) ---------- */
 const THEME = {
-  bg: "#eafaf1",            // app/page background
-  barBg: "#2fbf71",         // topbar background
-  barBorder: "#1fa765",
-  barInk: "#f7fff9",        // topbar text
-  cardBorder: "#b7e4c7",
+  bg: "#f8f9fa",          // app/page background (lighter for contrast)
+  barBg: "#6f42c1",       // topbar background (primary purple)
+  barBorder: "#5a32a3",   // darker purple border
+  barInk: "#ffffff",      // topbar text (white)
+  barHover: "#59359c",    // hover effect for nav links
+  cardBorder: "#d6d6f5",  // subtle purple border for cards
 };
 
 function isAuthed() {
@@ -63,7 +63,6 @@ function UnauthedOnly({ children }) {
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
-    // scroll to top on route change
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, search]);
   return null;
@@ -81,6 +80,19 @@ function Topbar() {
     window.dispatchEvent(new Event("auth"));
     nav("/login", { replace: true });
   }, [nav]);
+
+  const linkStyle = {
+    padding: "6px 12px",
+    borderRadius: "6px",
+    textDecoration: "none",
+    color: THEME.barInk,
+    fontWeight: 500,
+    transition: "background 0.2s",
+  };
+
+  const hoverStyle = {
+    background: THEME.barHover,
+  };
 
   return (
     <header
@@ -104,30 +116,47 @@ function Topbar() {
           textDecoration: "none",
           fontWeight: 800,
           letterSpacing: 0.3,
+          fontSize: 18,
         }}
       >
-        QR-Docs
+        Secure-Docs
       </Link>
 
+      {/* Navbar links */}
       <nav style={{ display: "flex", gap: 10, marginLeft: 12 }}>
         {isAuthed() && (
           <>
-            <Link className="btn btn-light" to="/dashboard">Dashboard</Link>
-            <Link className="btn btn-light" to="/scan">Scan QR</Link>
+            <Link
+              to="/dashboard"
+              style={linkStyle}
+              onMouseOver={(e) => Object.assign(e.target.style, hoverStyle)}
+              onMouseOut={(e) => Object.assign(e.target.style, linkStyle)}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/scan"
+              style={linkStyle}
+              onMouseOver={(e) => Object.assign(e.target.style, hoverStyle)}
+              onMouseOut={(e) => Object.assign(e.target.style, linkStyle)}
+            >
+              Scan QR
+            </Link>
           </>
         )}
       </nav>
 
+      {/* Right side (auth actions) */}
       <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
         {isAuthed() ? (
           <>
             <span style={{ fontSize: 13, opacity: 0.95 }}>{user?.email}</span>
-            <button className="btn btn-danger" onClick={logout}>Logout</button>
+            <button className="btn btn-danger btn-sm" onClick={logout}>Logout</button>
           </>
         ) : (
           <>
-            <Link className="btn btn-light" to="/login">Login</Link>
-            <Link className="btn btn-dark" to="/register">Register</Link>
+            <Link className="btn btn-light btn-sm" to="/login">Login</Link>
+            <Link className="btn btn-dark btn-sm" to="/register">Register</Link>
           </>
         )}
       </div>
@@ -145,13 +174,11 @@ export default function App() {
 
         <main style={{ minHeight: "calc(100vh - 56px)" }}>
           <Routes>
-            {/* Root: send to dashboard if authed, else login */}
             <Route
               path="/"
               element={isAuthed() ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />}
             />
 
-            {/* Auth pages (blocked if already authed) */}
             <Route
               path="/login"
               element={
@@ -169,11 +196,9 @@ export default function App() {
               }
             />
 
-            {/* Public entry for share/verify and viewer */}
             <Route path="/share/:shareId" element={<ShareAccess />} />
             <Route path="/view/:documentId" element={<ViewDoc />} />
 
-            {/* QR Scanner (nice to expose since you built it) */}
             <Route
               path="/scan"
               element={
@@ -183,7 +208,6 @@ export default function App() {
               }
             />
 
-            {/* App area */}
             <Route
               path="/dashboard"
               element={
@@ -193,12 +217,10 @@ export default function App() {
               }
             />
 
-            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
 
-        {/* Light toast fits bright theme */}
         <ToastContainer position="top-right" autoClose={2500} theme="light" />
       </div>
     </BrowserRouter>

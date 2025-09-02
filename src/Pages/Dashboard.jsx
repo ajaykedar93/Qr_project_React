@@ -61,11 +61,6 @@ export default function Dashboard() {
 
   // modals: delete doc, delete share, edit expiry, expire now feedback
   const [modal, setModal] = useState(null);
-  // modal shape:
-  // { type: 'deleteDoc', document_id, file_name }
-  // { type: 'deleteShare', share_id }
-  // { type: 'editExpiry', share_id, current }
-  // { type: 'expiringNow', share_id }  // transient
 
   // upload
   const onDrop = (accepted) => accepted?.[0] && uploadFile(accepted[0]);
@@ -382,10 +377,10 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <div className="tabs">
-        <Tab id="docs"     label="📂 My Documents"   color="#5b8cff" />
-        <Tab id="private"  label="🔒 Private Shares" color="#ff6f91" />
-        <Tab id="public"   label="🌍 Public Shares"  color="#19d3a2" />
-        <Tab id="received" label="📥 Received"       color="#ffbf5e" />
+        <Tab id="docs"     label="📂 My Documents"   color="#7c4dff" />
+        <Tab id="private"  label="🔒 Private Shares" color="#b07aff" />
+        <Tab id="public"   label="🌍 Public Shares"  color="#8e63ff" />
+        <Tab id="received" label="📥 Received"       color="#c39bff" />
       </div>
 
       {/* Content */}
@@ -393,48 +388,56 @@ export default function Dashboard() {
         {activeTab === "docs" && (
           loading ? <div className="muted">Loading…</div> :
           docs.length ? (
-            <table className="grid">
-              <thead>
-                <tr><th>Name</th><th className="center">Access</th><th className="center">Size</th><th>Actions</th></tr>
-              </thead>
-              <tbody>{docs.map((d) => <DocRow key={d.document_id} d={d} />)}</tbody>
-            </table>
+            <div className="table-responsive">
+              <table className="grid">
+                <thead>
+                  <tr><th>Name</th><th className="center">Access</th><th className="center">Size</th><th>Actions</th></tr>
+                </thead>
+                <tbody>{docs.map((d) => <DocRow key={d.document_id} d={d} />)}</tbody>
+              </table>
+            </div>
           ) : <div className="muted">No documents yet.</div>
         )}
 
         {activeTab === "private" && (
           loading ? <div className="muted">Loading…</div> :
           privateShares.length ? (
-            <table className="grid">
-              <thead>
-                <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Actions</th></tr>
-              </thead>
-              <tbody>{privateShares.map((s) => <SentRow key={s.share_id} s={s} />)}</tbody>
-            </table>
+            <div className="table-responsive">
+              <table className="grid">
+                <thead>
+                  <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Actions</th></tr>
+                </thead>
+                <tbody>{privateShares.map((s) => <SentRow key={s.share_id} s={s} />)}</tbody>
+              </table>
+            </div>
           ) : <div className="muted">No private shares yet.</div>
         )}
 
         {activeTab === "public" && (
           loading ? <div className="muted">Loading…</div> :
           publicShares.length ? (
-            <table className="grid">
-              <thead>
-                <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Actions</th></tr>
-              </thead>
-              <tbody>{publicShares.map((s) => <SentRow key={s.share_id} s={s} />)}</tbody>
-            </table>
+            <div className="table-responsive">
+              <table className="grid">
+                <thead>
+                  <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Actions</th></tr>
+                </thead>
+                <tbody>{publicShares.map((s) => <SentRow key={s.share_id} s={s} />)}</tbody>
+              </table>
+            </div>
           ) : <div className="muted">No public shares yet.</div>
         )}
 
         {activeTab === "received" && (
           loading ? <div className="muted">Loading…</div> :
           received.length ? (
-            <table className="grid">
-              <thead>
-                <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Open</th></tr>
-              </thead>
-              <tbody>{received.map((r) => <RecvRow key={r.share_id} r={r} />)}</tbody>
-            </table>
+            <div className="table-responsive">
+              <table className="grid">
+                <thead>
+                  <tr><th>Document</th><th className="center">Access</th><th className="center">QR</th><th>Open</th></tr>
+                </thead>
+                <tbody>{received.map((r) => <RecvRow key={r.share_id} r={r} />)}</tbody>
+              </table>
+            </div>
           ) : <div className="muted">No shares received.</div>
         )}
       </div>
@@ -614,47 +617,48 @@ function ExpiryModal({ current, onSubmit, onClose }) {
   );
 }
 
-// ---------- bright styles ----------
+// ---------- bright styles (purple-aligned + responsive) ----------
 function StyleBright() {
   return (
     <style>{`
-/* === Bright green page background === */
+/* === Subtle mint bg to keep your original vibe === */
 html, body, #root { background: linear-gradient(180deg, #EFFFF7 0%, #E3FFEF 50%, #DBFFF0 100%); min-height: 100%; }
 
 /* layout */
 .wrap{max-width:1280px;margin:24px auto;padding:0 16px;color:#0a1633;}
 .header{display:flex;align-items:center;margin-bottom:14px;}
-.brand{font-weight:800;font-size:22px;background:linear-gradient(90deg,#5b8cff,#19d3a2);
+.brand{font-weight:800;font-size:22px;background:linear-gradient(90deg,#7c4dff,#a88cff);
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .who{margin-left:auto;font-size:14px;color:#33406a}
 
 /* uploader */
-.uploader{border:2px dashed #5b8cff;border-radius:14px;padding:20px;text-align:center;
-  background:linear-gradient(180deg,#f4f7ff,#eef9ff); color:#1a2550}
-.uploader.drag{background:linear-gradient(180deg,#eaf2ff,#e6fff7);border-color:#19d3a2}
+.uploader{border:2px dashed #7c4dff;border-radius:14px;padding:20px;text-align:center;
+  background:linear-gradient(180deg,#f6f2ff,#f6f2ff); color:#1a2550}
+.uploader.drag{background:linear-gradient(180deg,#efe6ff,#f3edff);border-color:#a88cff}
 .uploader .sep{margin:0 8px;color:#9aa4c7}
 
 /* tabs */
-.tabs{display:flex;gap:10px;margin:14px 0}
-.tab{border:none;padding:10px 14px;border-radius:999px;background:#edf1ff;color:#1a2550;
+.tabs{display:flex;gap:10px;margin:14px 0;flex-wrap:wrap}
+.tab{border:none;padding:10px 14px;border-radius:999px;background:#efe9ff;color:#2a1d4e;
   font-weight:700;cursor:pointer;transition:transform .12s, box-shadow .12s}
-.tab:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(30,60,150,.15)}
+.tab:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(86,50,180,.15)}
 .tab.active{background:var(--tab-accent); color:#fff; box-shadow:0 8px 20px rgba(0,0,0,.12)}
 
 /* panel */
-.panel{background:#fff;border:1px solid #d6f5e6;border-radius:14px;padding:16px}
+.panel{background:#fff;border:1px solid #e8e2ff;border-radius:14px;padding:16px;overflow-x:auto}
 
 /* table */
-.grid{width:100%;border-collapse:collapse}
-.grid th,.grid td{padding:10px;border-bottom:1px solid #eef2ff}
-.grid thead th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#5b6a9a}
+.table-responsive{width:100%;overflow-x:auto}
+.grid{width:100%;border-collapse:collapse;min-width:720px}
+.grid th,.grid td{padding:10px;border-bottom:1px solid #efe9ff;vertical-align:middle}
+.grid thead th{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:#5b4aa3}
 .center{text-align:center}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .cell-title{display:flex;flex-direction:column}
-.file-name{font-weight:700;color:#1a2550}
-.file-meta{font-size:12px;color:#6877a8}
-.muted{color:#6d7aa8}
-.linkish{background:none;border:none;color:#4162ff;cursor:pointer;font-weight:600}
+.file-name{font-weight:700;color:#2a1d4e}
+.file-meta{font-size:12px;color:#7b6fb3}
+.muted{color:#6f6aa0}
+.linkish{background:none;border:none;color:#6f42c1;cursor:pointer;font-weight:600}
 .linkish:hover{text-decoration:underline}
 
 /* chips */
@@ -669,29 +673,54 @@ html, body, #root { background: linear-gradient(180deg, #EFFFF7 0%, #E3FFEF 50%,
 /* buttons */
 .btn{border:none;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer;transition:transform .08s, box-shadow .12s}
 .btn:active{transform:translateY(1px)}
-.btn-light{background:#eef2ff;color:#2b3c6b}
-.btn-accent{background:linear-gradient(90deg,#5b8cff,#19d3a2);color:#fff;box-shadow:0 8px 18px rgba(25,211,162,.25)}
-.btn-accent:hover{box-shadow:0 10px 22px rgba(25,211,162,.3)}
+.btn-light{background:#efe9ff;color:#3a2b73}
+.btn-accent{background:linear-gradient(90deg,#6f42c1,#5a32a3);color:#fff;box-shadow:0 8px 18px rgba(111,66,193,.25)}
+.btn-accent:hover{box-shadow:0 10px 22px rgba(111,66,193,.32)}
 .btn-danger{background:#ff6f91;color:#fff;box-shadow:0 8px 18px rgba(255,111,145,.25)}
 .btn-danger:hover{box-shadow:0 10px 22px rgba(255,111,145,.3)}
 
 /* modal */
-.modal-backdrop{position:fixed;inset:0;background:rgba(10,22,51,.45);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000}
-.modal{width:min(760px,92vw);background:#ffffff;border:1px solid #e4ebff;border-radius:16px;box-shadow:0 20px 60px rgba(10,22,51,.25);padding:20px}
+.modal-backdrop{position:fixed;inset:0;background:rgba(20,16,40,.45);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;padding:12px}
+.modal{width:min(760px,92vw);background:#ffffff;border:1px solid #ece6ff;border-radius:16px;box-shadow:0 20px 60px rgba(20,16,40,.25);padding:20px}
 .modal.small{width:min(480px,92vw)}
-.modal-title{margin:0 0 10px 0;color:#142251}
-.form-grid{display:grid;grid-template-columns:160px 1fr;gap:12px;align-items:center;margin-top:8px}
-.lbl{font-size:13px;color:#56669a}
-.input{width:100%;padding:10px;border-radius:10px;border:1px solid #d8e2ff;background:#f8fbff;color:#142251}
+.modal-title{margin:0 0 10px 0;color:#2a1d4e}
+.form-grid{display:grid;grid-template-columns:180px 1fr;gap:12px;align-items:center;margin-top:8px}
+.lbl{font-size:13px;color:#5e4ea0}
+.input{width:100%;padding:10px;border-radius:10px;border:1px solid #dfd6ff;background:#fbf9ff;color:#2a1d4e}
 .hint{font-size:12px;margin-top:6px;color:#5a2bdc}
-.modal-actions{display:flex;gap:10px;margin-top:14px}
-.result{margin-top:16px;padding:14px;border:1px dashed #dbe6ff;border-radius:12px;background:#f7fbff}
+.modal-actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.result{margin-top:16px;padding:14px;border:1px dashed #dcd2ff;border-radius:12px;background:#faf7ff}
 .ok{color:#106b55;font-weight:700}
 .qr-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:8px}
 .qr-big{width:220px;height:220px;border-radius:12px;background:#fff;padding:10px;box-shadow:0 10px 26px rgba(0,0,0,.08)}
 .link-box{min-width:260px}
-.bold-link{color:#334cff;font-weight:800;word-break:break-all}
+.bold-link{color:#59359c;font-weight:800;word-break:break-all}
 .btn-row{display:flex;gap:8px;margin-top:10px}
+
+/* ======= RESPONSIVE ======= */
+@media (max-width: 992px){
+  .form-grid{grid-template-columns:150px 1fr}
+  .grid{min-width:680px}
+}
+@media (max-width: 768px){
+  .wrap{padding:0 12px}
+  .brand{font-size:20px}
+  .who{font-size:13px}
+  .form-grid{grid-template-columns:1fr;gap:10px}
+  .lbl{margin-bottom:4px}
+  .qr-big{width:180px;height:180px}
+  .qr-img{width:40px;height:40px}
+  .btn{padding:8px 10px}
+  .grid{min-width:640px}
+}
+@media (max-width: 480px){
+  .uploader{padding:16px}
+  .tabs{gap:8px}
+  .tab{padding:8px 12px}
+  .panel{padding:12px}
+  .qr-big{width:150px;height:150px}
+  .grid{min-width:560px}
+}
 `}</style>
   );
 }

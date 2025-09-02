@@ -9,8 +9,8 @@
   --card: #121936;
   --muted: #8ea0ff;
   --text: #e9ecff;
-  --accent: #6c8bff;
-  --accent-2: #52e1c1;
+  --accent: #6c8bff;     /* blue-violet */
+  --accent-2: #52e1c1;   /* teal neon */
   --danger: #ff6b6b;
   --line: #2a3170;
 
@@ -30,7 +30,7 @@
   --r-14: 14px;
   --r-18: 18px;
 
-  /* font */
+  /* typography */
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   font-weight: 400;
   line-height: 1.5;
@@ -50,6 +50,7 @@ img, video { max-width: 100%; height: auto; display: block; }
 button { font: inherit; }
 a { color: var(--muted); text-decoration: none; }
 a:hover { color: var(--accent); }
+hr { border: 0; height: 1px; background: var(--line); opacity: .6; }
 
 /* ---------- Background FX ---------- */
 body {
@@ -70,14 +71,44 @@ body {
 
 /* ---------- Container ---------- */
 .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px;
   flex: 1;
   animation: fadeIn .35s ease both;
 }
 
-/* ---------- Cards ---------- */
+/* ===================================
+   Topbar / Navbar (Purple + Hover)
+   =================================== */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px;
+  background: #6f42c1;                     /* purple */
+  border-bottom: 1px solid #5a32a3;        /* dark purple */
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.topbar .brand {
+  font-weight: 800; letter-spacing: .3px; font-size: 18px;
+  color: #fff;
+}
+.topbar .nav { display: flex; gap: 8px; margin-left: 12px; }
+.topbar .nav a {
+  padding: 6px 12px; border-radius: 8px; color: #fff;
+  transition: background var(--t-fast), transform var(--t-fast);
+}
+.topbar .nav a:hover { background: #59359c; transform: translateY(-1px); }
+.topbar .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.topbar .who { font-size: 13px; opacity: .95; }
+
+/* If your header is inline-styled in React, add this helper to apply the look */
+header[style] { background: #6f42c1 !important; border-bottom: 1px solid #5a32a3 !important; color: #fff !important; }
+
+/* ===================================
+   Cards
+   =================================== */
 .card {
   background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
   border: 1px solid rgba(255,255,255,.10);
@@ -93,7 +124,9 @@ body {
   border-color: rgba(255,255,255,.16);
 }
 
-/* ---------- Buttons ---------- */
+/* ===================================
+   Buttons
+   =================================== */
 .btn {
   border: 1px solid rgba(255,255,255,.20);
   background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
@@ -138,9 +171,15 @@ body {
 .btn-light {
   background: #1a2148;
   border-color: #2e3a86;
+  color: var(--text);
 }
 
-/* ---------- Inputs / Selects ---------- */
+/* Compact button variant for navbar/right actions */
+.btn-sm { padding: 6px 10px; border-radius: 8px; }
+
+/* ===================================
+   Inputs / Selects
+   =================================== */
 .input, .select, input, select, textarea {
   width: 100%;
   padding: 12px 14px;
@@ -158,35 +197,54 @@ body {
 }
 
 /* invalid / danger states */
-.input.is-invalid, input.is-invalid {
+.input.is-invalid, input.is-invalid, select.is-invalid, textarea.is-invalid {
   border-color: var(--danger);
   box-shadow: 0 0 0 3px rgba(255,107,107,.2);
 }
 
-/* ---------- Grid helpers ---------- */
+/* Simple form grid (used in modals) */
+.form-grid { display: grid; grid-template-columns: 180px 1fr; gap: 12px; align-items: center; margin-top: 8px; }
+.lbl { font-size: 13px; color: #b9c3ffcc; }
+
+/* ===================================
+   Grid helpers
+   =================================== */
 .row { display: grid; gap: 16px; }
 .row-2 { grid-template-columns: repeat(2, 1fr); }
 .row-3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 900px) { .row-2, .row-3 { grid-template-columns: 1fr; } }
 
-/* ---------- Table ---------- */
-.table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-.table th, .table td { padding: 10px 8px; border-bottom: 1px dashed rgba(255,255,255,.12); }
-.table th { text-align: left; font-weight: 600; color: #cdd6ff; letter-spacing: .2px; }
-.table tr:hover td { background: rgba(255,255,255,.03); }
+/* ===================================
+   Tables
+   =================================== */
+.table-responsive { width: 100%; overflow-x: auto; }
+.table, .grid { width: 100%; border-collapse: collapse; margin-top: 8px; min-width: 640px; }
+.table th, .table td,
+.grid th, .grid td { padding: 10px 8px; border-bottom: 1px dashed rgba(255,255,255,.12); vertical-align: middle; }
+.table th, .grid thead th { text-align: left; font-weight: 600; color: #cdd6ff; letter-spacing: .2px; font-size: 12px; text-transform: uppercase; }
+.table tr:hover td, .grid tbody tr:hover td { background: rgba(255,255,255,.03); }
+.center { text-align: center; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-/* ---------- Badges ---------- */
-.badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; }
+.cell-title { display: flex; flex-direction: column; }
+.file-name { font-weight: 700; color: #eaf0ff; }
+.file-meta { font-size: 12px; color: #aab6ffcc; }
+
+/* ===================================
+   Badges / Chips
+   =================================== */
+.badge, .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; }
 .badge-green { background: #1fff85; color: #001; }
 .badge-red { background: #ff6666; color: #100; }
-.badge-outline {
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--text);
-}
+.badge-outline { background: transparent; border: 1px solid var(--line); color: var(--text); }
 
-/* ---------- Tabs ---------- */
-.tabs { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip-green { background: #00f5b8; color: #07131c; border: 1px solid #00d4a0; }
+.chip-violet { background: #cdb4ff1f; color: #d7c6ff; border: 1px solid #8266ff66; }
+
+/* ===================================
+   Tabs
+   =================================== */
+.tabs { display: flex; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
 .tab {
   padding: 8px 14px;
   border-radius: var(--r-10);
@@ -194,16 +252,19 @@ body {
   background: #0f1533;
   color: var(--text);
   cursor: pointer;
-  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast);
+  transition: background var(--t-fast), transform var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
 }
-.tab:hover { transform: translateY(-1px); }
-.tab.is-active {
+.tab:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.tab.is-active,
+.tab.active {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
   color: #06122b;
   border-color: transparent;
 }
 
-/* ---------- Modal ---------- */
+/* ===================================
+   Modals
+   =================================== */
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(4, 8, 22, .65);
@@ -211,6 +272,7 @@ body {
   display: grid; place-items: center;
   z-index: 1000;
   animation: fadeIn .2s ease both;
+  padding: 12px;
 }
 .modal {
   width: min(720px, 92vw);
@@ -221,54 +283,74 @@ body {
   padding: 20px;
   animation: slideUp .26s ease both;
 }
+.modal.small { width: min(480px, 92vw); }
+.modal-title { margin: 0 0 10px 0; color: #eef2ff; }
+.modal-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
 
-/* ---------- Tooltips (simple) ---------- */
-.tooltip {
-  position: relative;
-}
-.tooltip:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%; transform: translateX(-50%);
-  white-space: nowrap;
-  background: #0e1536;
-  border: 1px solid #2a3170;
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 8px;
-  font-size: 12px;
-  box-shadow: var(--shadow-1);
-  animation: fadeIn .16s ease both;
-}
-
-/* ---------- Dropzone ---------- */
-.dropzone {
+/* ===================================
+   Dropzone / Uploader
+   =================================== */
+.dropzone, .uploader {
   border: 1px dashed var(--accent);
   background: #0f1533;
   padding: 22px;
   border-radius: var(--r-14);
   text-align: center;
   cursor: pointer;
-  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+  transition: border-color var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast), background var(--t-fast);
+  color: #dfe6ff;
 }
-.dropzone:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
-.dropzone.is-active {
+.dropzone:hover, .uploader:hover { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+.dropzone.is-active, .uploader.drag {
   border-color: var(--accent-2);
   box-shadow: 0 0 0 3px rgba(82,225,193,.25);
+  background: #0f163f;
 }
+.uploader .sep { margin: 0 8px; color: #9aa4ff; }
 
-/* ---------- QR image polish ---------- */
-.qr {
-  background: #fff;
-  border-radius: 10px;
-  padding: 8px;
-  box-shadow: 0 8px 20px rgba(0,0,0,.25);
-  transition: transform var(--t-fast);
-}
+/* ===================================
+   QR image polish
+   =================================== */
+.qr-img { width: 46px; height: 46px; border-radius: 8px; background: #fff; padding: 4px; cursor: pointer; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+.qr { text-align: center; }
 .qr:hover { transform: scale(1.02); }
+.qr-big { width: 220px; height: 220px; border-radius: 10px; background: #fff; padding: 10px; box-shadow: 0 12px 28px rgba(0,0,0,.35); }
 
-/* ---------- Scrollbar ---------- */
+/* ===================================
+   Utility
+   =================================== */
+.wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+.header { display: flex; align-items: center; margin-bottom: 14px; }
+.brand-text-gradient {
+  font-weight: 800; font-size: 22px;
+  background: linear-gradient(90deg,#7c4dff,#a88cff);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.who { margin-left: auto; font-size: 14px; color: #c7cfffcc; }
+.linkish { background: none; border: none; color: var(--accent); cursor: pointer; font-weight: 600; }
+.linkish:hover { text-decoration: underline; }
+.muted { color: #c7cfff99; }
+.bold-link { color: #9eb0ff; font-weight: 800; word-break: break-all; }
+.btn-row { display: flex; gap: 8px; margin-top: 10px; }
+.result { margin-top: 16px; padding: 14px; border: 1px dashed rgba(255,255,255,.16); border-radius: 12px; background: #0f1533; }
+.ok { color: #1bffb2; font-weight: 700; }
+
+/* ===================================
+   Toastify (react-toastify) overrides (lightly themed)
+   =================================== */
+.Toastify__toast {
+  background: #11173a !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: var(--shadow-1);
+}
+.Toastify__toast--success { border-left: 4px solid var(--accent-2) !important; }
+.Toastify__toast--error { border-left: 4px solid var(--danger) !important; }
+.Toastify__progress-bar { background: var(--accent) !important; }
+
+/* ===================================
+   Scrollbar
+   =================================== */
 * {
   scrollbar-width: thin;
   scrollbar-color: #334089 #0c1230;
@@ -278,7 +360,9 @@ body {
 *::-webkit-scrollbar-thumb { background: #334089; border-radius: 10px; }
 *::-webkit-scrollbar-thumb:hover { background: #4150a0; }
 
-/* ---------- Animations ---------- */
+/* ===================================
+   Animations
+   =================================== */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
@@ -287,8 +371,6 @@ body {
   from { opacity: 0; transform: translateY(14px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
-/* ---------- Skeleton loaders ---------- */
 .skel {
   position: relative;
   overflow: hidden;
@@ -303,11 +385,73 @@ body {
   transform: translateX(-100%);
   animation: shimmer 1.4s infinite;
 }
-@keyframes shimmer {
-  100% { transform: translateX(100%); }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* ===================================
+   Responsive (Desktop → Mobile)
+   =================================== */
+/* ≥1200px (container already 1200) */
+
+/* ≤1200px */
+@media (max-width: 1200px) {
+  .container, .wrap { padding: 0 16px; }
 }
 
-/* ---------- Utility ---------- */
-.muted { color: #c7cfff99; }
-.center { display: grid; place-items: center; }
+/* ≤992px */
+@media (max-width: 992px) {
+  .form-grid { grid-template-columns: 150px 1fr; }
+  .qr-big { width: 200px; height: 200px; }
+}
+
+/* ≤768px */
+@media (max-width: 768px) {
+  .topbar { padding: 10px 12px; }
+  .topbar .nav { gap: 6px; }
+  .btn { padding: 8px 12px; }
+  .btn-sm { padding: 6px 8px; }
+  .brand-text-gradient { font-size: 20px; }
+  .who { font-size: 13px; }
+
+  .form-grid { grid-template-columns: 1fr; gap: 10px; }
+  .lbl { margin-bottom: 4px; }
+
+  .qr-big { width: 170px; height: 170px; }
+  .qr-img { width: 40px; height: 40px; }
+
+  .table, .grid { min-width: 560px; }  /* keep horizontal scroll elegant */
+}
+
+/* ≤480px */
+@media (max-width: 480px) {
+  .container { padding: 14px; }
+  .tabs { gap: 8px; }
+  .tab { padding: 8px 12px; }
+  .modal { padding: 16px; }
+  .uploader, .dropzone { padding: 16px; }
+  .qr-big { width: 140px; height: 140px; }
+}
+
+/* ===================================
+   Accessibility / Prefs
+   =================================== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+@media (forced-colors: active) {
+  :root { --line: GrayText; }
+  .btn, .input, .select, .modal, .card, .tab, .uploader { border: 1px solid CanvasText; }
+  .Toastify__toast { border: 1px solid CanvasText !important; }
+}
+
+/* Helper classes used by your pages */
+.brand {
+  font-weight: 800;
+  font-size: 22px;
+  background: linear-gradient(90deg, #7c4dff, #a88cff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.bold { font-weight: 800; }
 .hide { display: none !important; }
