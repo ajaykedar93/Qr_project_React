@@ -13,6 +13,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // Pages
+import Home from "./Pages/Home.jsx";           // ⬅️ Home page
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
@@ -23,13 +24,12 @@ import NotFound from "./Pages/NotFound.jsx";
 
 /* ---------- Theme (Purple + Deep) ---------- */
 const THEME = {
-  bg: "#0f0c16",         // app/page background (pairs well with your dark theme)
+  bg: "#0f0c16",
   pageMinH: "100vh",
-  barBgFrom: "#6d28d9",  // purple-600
-  barBgTo: "#a21caf",    // fuchsia-700
-  barBorder: "#7c3aed",  // purple-500
-  barInk: "#f7ecff",     // light ink
-  cardBorder: "#3b2a5a",
+  barBgFrom: "#6d28d9",
+  barBgTo: "#a21caf",
+  barBorder: "#7c3aed",
+  barInk: "#f7ecff",
   lightGlass: "rgba(255,255,255,.08)",
 };
 
@@ -74,7 +74,6 @@ function UnauthedOnly({ children }) {
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
-    // scroll to top on route change
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [pathname, search]);
   return null;
@@ -84,6 +83,7 @@ function ScrollToTop() {
 function Topbar() {
   const user = useAuthUser();
   const nav = useNavigate();
+  const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
 
   const logout = useCallback(() => {
@@ -94,7 +94,7 @@ function Topbar() {
     nav("/login", { replace: true });
   }, [nav]);
 
-  // Close mobile menu on navigation
+  // Close mobile menu on navigation/back/forward
   useEffect(() => {
     const closeOnRoute = () => setOpen(false);
     window.addEventListener("popstate", closeOnRoute);
@@ -112,7 +112,6 @@ function Topbar() {
     position: "sticky",
     top: 0,
     zIndex: 50,
-    // Glass sheen
     boxShadow: "0 10px 30px rgba(0,0,0,.35)",
   };
 
@@ -155,10 +154,7 @@ function Topbar() {
     fontSize: 14,
   };
 
-  const btnHover = (s) => ({
-    ...btnBase,
-    ...s,
-  });
+  const btnHover = (s) => ({ ...btnBase, ...s });
 
   const burgerBtn = {
     marginLeft: "auto",
@@ -173,10 +169,11 @@ function Topbar() {
     cursor: "pointer",
   };
 
+  const hideAuthOnHome = pathname === "/" && !isAuthed();
+
   return (
     <header style={barStyle}>
       <Link to="/" style={brandStyle} aria-label="Secure-Doc Home">
-        {/* Simple lock logo */}
         <span
           aria-hidden
           style={{
@@ -194,14 +191,8 @@ function Topbar() {
         Secure-Doc
       </Link>
 
-      {/* Desktop nav */}
-      <nav
-        style={{
-          ...navWrap,
-          display: "none",
-        }}
-        className="nav-desktop"
-      >
+      {/* Desktop nav (only when authed) */}
+      <nav style={{ ...navWrap, display: "none" }} className="nav-desktop">
         {isAuthed() && (
           <>
             <Link
@@ -226,15 +217,9 @@ function Topbar() {
         )}
       </nav>
 
-      {/* Right section (desktop) */}
-      <div
-        style={{
-          ...rightWrap,
-          display: "none",
-        }}
-        className="right-desktop"
-      >
-        {isAuthed() ? (
+      {/* Right section (desktop) — hides Login/Register on Home when not authed */}
+      <div style={{ ...rightWrap, display: "none" }} className="right-desktop">
+        {hideAuthOnHome ? null : isAuthed() ? (
           <>
             <span style={{ fontSize: 13, opacity: 0.95, whiteSpace: "nowrap" }}>
               {user?.email}
@@ -288,25 +273,18 @@ function Topbar() {
         className="burger"
         onClick={() => setOpen((v) => !v)}
       >
-        {/* simple burger icon */}
         <svg width="24" height="24" viewBox="0 0 24 24" role="img">
-          <path
-            d="M4 6h16M4 12h16M4 18h16"
-            stroke={THEME.barInk}
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
+          <path d="M4 6h16M4 12h16M4 18h16" stroke={THEME.barInk} strokeWidth="2" strokeLinecap="round" />
         </svg>
       </button>
 
-      {/* Mobile sheet */}
+      {/* Mobile sheet (also hides auth on Home if not authed) */}
       <div
         id="mobile-menu"
         style={{
           position: "fixed",
           inset: "56px 8px auto 8px",
-          background:
-            "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06))",
+          background: "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06))",
           border: `1px solid ${THEME.lightGlass}`,
           borderRadius: 14,
           backdropFilter: "blur(8px)",
@@ -319,18 +297,10 @@ function Topbar() {
       >
         {isAuthed() ? (
           <>
-            <Link
-              to="/dashboard"
-              onClick={() => setOpen(false)}
-              style={btnHover({ textAlign: "center" })}
-            >
+            <Link to="/dashboard" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Dashboard
             </Link>
-            <Link
-              to="/scan"
-              onClick={() => setOpen(false)}
-              style={btnHover({ textAlign: "center" })}
-            >
+            <Link to="/scan" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Scan QR
             </Link>
             <div
@@ -358,27 +328,21 @@ function Topbar() {
               </button>
             </div>
           </>
+        ) : hideAuthOnHome ? (
+          <></>
         ) : (
           <>
-            <Link
-              to="/login"
-              onClick={() => setOpen(false)}
-              style={btnHover({ textAlign: "center" })}
-            >
+            <Link to="/login" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Login
             </Link>
-            <Link
-              to="/register"
-              onClick={() => setOpen(false)}
-              style={btnHover({ textAlign: "center" })}
-            >
+            <Link to="/register" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Register
             </Link>
           </>
         )}
       </div>
 
-      {/* Small CSS to toggle desktop vs mobile */}
+      {/* Desktop vs mobile toggles */}
       <style>{`
         @media (min-width: 860px) {
           .nav-desktop, .right-desktop { display: flex !important; }
@@ -394,22 +358,15 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      <div style={{ background: THEME.bg, minHeight: THEME.pageMinH }}>
+      {/* Full-width + full-height app shell */}
+      <div style={{ background: THEME.bg, minHeight: THEME.pageMinH, width: "100%" }}>
         <Topbar />
 
-        <main style={{ minHeight: "calc(100vh - 56px)" }}>
+        {/* Full-width pages; 100svh accounts for mobile browser UI */}
+        <main style={{ minHeight: "calc(100svh - 56px)", width: "100%" }}>
           <Routes>
-            {/* Root: send to dashboard if authed, else login */}
-            <Route
-              path="/"
-              element={
-                isAuthed() ? (
-                  <Navigate to="/dashboard" replace />
-                ) : (
-                  <Navigate to="/login" replace />
-                )
-              }
-            />
+            {/* PUBLIC HOME (visible before login) */}
+            <Route path="/" element={<Home />} />
 
             {/* Auth pages (blocked if already authed) */}
             <Route
@@ -458,7 +415,7 @@ export default function App() {
           </Routes>
         </main>
 
-        {/* Toasts adapt fine on dark/purple background */}
+        {/* Toasts (dark theme still works fine on the purple background) */}
         <ToastContainer position="top-right" autoClose={2500} theme="dark" />
       </div>
     </BrowserRouter>

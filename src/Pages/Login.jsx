@@ -40,85 +40,142 @@ export default function Login() {
     }
   }
 
-  return (
-    <div style={{ maxWidth: 560, margin: "64px auto", padding: "0 16px" }}>
-      {/* Global bright-green theme */}
-      <style>{`
-        body {
-          background: linear-gradient(180deg, #EFFFF7 0%, #E3FFEF 50%, #DBFFF0 100%);
-          font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, 'Apple Color Emoji', 'Segoe UI Emoji';
-        }
-        .btn {
-          padding: 10px 14px;
-          border-radius: 10px;
-          border: none;
-          cursor: pointer;
-          font-weight: 600;
-          transition: transform .04s ease, box-shadow .2s ease, background .2s ease;
-        }
-        .btn:active { transform: translateY(1px) }
-        .btn-primary { background: #19d3a2; color: #fff; box-shadow: 0 4px 12px rgba(25,211,162,.25); }
-        .btn-primary:hover { background: #12c39a; box-shadow: 0 6px 18px rgba(25,211,162,.32); }
-        .btn-ghost { background: #eef9f5; color: #0a8f6a; }
-        .btn-ghost:hover { background: #e6f7f0; }
+  const pageWrap = {
+    width: "100%",
+    minHeight: "calc(100svh - 56px)", // full viewport minus navbar
+    display: "grid",
+    placeItems: "center",
+    padding: "clamp(18px, 4vw, 40px)",
+    boxSizing: "border-box",
+    // Match Home.jsx layered background
+    backgroundImage: [
+      "radial-gradient(60rem 30rem at 10% 92%, rgba(255,106,61,.45) 0%, rgba(255,106,61,0) 60%)",
+      "radial-gradient(55rem 28rem at 92% 8%, rgba(255,0,128,.40) 0%, rgba(255,0,128,0) 60%)",
+      "linear-gradient(145deg, #1a0f3a 0%, #0e0f3a 100%)",
+    ].join(","),
+  };
 
-        .input {
-          width: 100%;
-          padding: 12px 14px;
-          border-radius: 10px;
-          border: 1px solid #cfeee3;
-          background: #fff;
-          color: #111;
-          outline: none;
-          transition: box-shadow .15s ease, border-color .15s ease;
+  return (
+    <div style={pageWrap}>
+      {/* Inline dark theme that mirrors Home.jsx palette */}
+      <style>{`
+        :root {
+          --ink-strong: #f7c43d;  /* yellow heading ink (matches Home title) */
+          --ink-soft:   #cdd1ff;  /* soft text */
+          --ink-body:   #e8e6ff;  /* body text high-contrast */
+          --card:       #16122b;  /* deep card */
+          --line:       rgba(255,255,255,.08);
+          --accent1:    #ff5b93;
+          --accent2:    #d246a1;
+          --accent3:    #bf3ea0;
+          --focus:      rgba(255,91,147,.35);
         }
-        .input:focus {
-          border-color: #19d3a2;
-          box-shadow: 0 0 0 4px rgba(25,211,162,.15);
+
+        .card {
+          background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+          border: 1px solid var(--line);
+          border-radius: 18px;
+          padding: clamp(22px, 3.6vw, 28px);
+          width: min(560px, 100%);
+          box-shadow:
+            0 18px 50px rgba(0,0,0,.35),
+            inset 0 0 0 1px rgba(255,255,255,.02);
+          backdrop-filter: blur(6px);
+        }
+
+        .title {
+          margin: 0 0 8px;
+          color: var(--ink-strong);
+          font-weight: 900;
+          letter-spacing: .2px;
+          font-size: clamp(22px, 3.6vw, 28px);
+          line-height: 1.15;
+        }
+
+        .subtitle {
+          margin: 0 0 18px;
+          color: var(--ink-soft);
+          font-size: clamp(13px, 2.2vw, 15px);
         }
 
         .field-label {
           font-size: 13px;
-          color: #267a66;
+          color: var(--ink-soft);
           margin-bottom: 6px;
-          font-weight: 600;
+          font-weight: 700;
           letter-spacing: .2px;
         }
-        .card {
-          background: #fff;
-          border: 1px solid #d6f5e6;
-          border-radius: 16px;
-          padding: 26px 22px;
-          box-shadow: 0 12px 36px rgba(0,0,0,.08);
+
+        .input {
+          width: 100%;
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid var(--line);
+          background: rgba(255,255,255,.06);
+          color: var(--ink-body);
+          outline: none;
+          transition: box-shadow .15s ease, border-color .15s ease, background .15s ease, transform .12s ease;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
         }
-        .title {
-          margin: 0 0 8px;
-          color: #0a8f6a;
+        .input::placeholder { color: rgba(205,209,255,.6); }
+        .input:focus {
+          border-color: var(--accent1);
+          box-shadow: 0 0 0 5px var(--focus);
+          transform: translateY(-1px);
+          background: rgba(255,255,255,.08);
+        }
+
+        .btn {
+          padding: 12px 16px;
+          border-radius: 14px;
+          border: none;
+          cursor: pointer;
           font-weight: 800;
-          letter-spacing: .2px;
+          transition: transform .06s ease, box-shadow .2s ease, filter .2s ease, opacity .2s ease;
         }
-        .subtitle {
-          margin: 0 0 18px;
-          color: #3a6a5d;
-          font-size: 14px;
+        .btn:active { transform: translateY(1px) }
+
+        .btn-primary {
+          color: #fff;
+          background-image: linear-gradient(180deg, var(--accent1) 0%, var(--accent2) 100%);
+          box-shadow: 0 12px 30px rgba(210, 70, 161, .42);
         }
+        .btn-primary:hover {
+          filter: brightness(1.03);
+          box-shadow: 0 14px 34px rgba(210, 70, 161, .48);
+        }
+        .btn-ghost {
+          background: rgba(255,255,255,.08);
+          color: #f2f0ff;
+          border: 1px solid var(--line);
+        }
+        .btn-ghost:hover { filter: brightness(1.06) }
+
         .helper {
-          margin-top: 10px;
+          margin-top: 12px;
           font-size: 14px;
-          color: #2e5e52;
+          color: var(--ink-soft);
         }
         .link {
-          color: #0a8f6a;
+          color: #ffd166;
           text-decoration: none;
-          font-weight: 700;
+          font-weight: 800;
         }
         .link:hover { text-decoration: underline; }
+
+        .sep {
+          height: 1px;
+          background: var(--line);
+          margin: 16px 0;
+          border-radius: 999px;
+        }
       `}</style>
 
       <motion.form
         onSubmit={submit}
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
         className="card"
       >
         <h2 className="title">Welcome back</h2>
@@ -138,7 +195,7 @@ export default function Login() {
         </div>
 
         {/* Password with show/hide */}
-        <div style={{ marginBottom: 10 }}>
+        <div style={{ marginBottom: 12 }}>
           <div className="field-label">Password</div>
           <div style={{ position: "relative" }}>
             <input
@@ -148,7 +205,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              style={{ paddingRight: 100 }}
+              style={{ paddingRight: 104 }}
             />
             <button
               type="button"
@@ -158,7 +215,7 @@ export default function Login() {
                 position: "absolute",
                 right: 6,
                 top: 6,
-                height: 40,
+                height: 44,
                 padding: "0 12px",
                 fontSize: 12,
               }}
@@ -169,11 +226,14 @@ export default function Login() {
           </div>
         </div>
 
+        {/* Divider (optional) */}
+        <div className="sep" />
+
         {/* Submit */}
         <button
           className="btn btn-primary"
           disabled={loading}
-          style={{ width: "100%", marginTop: 8, opacity: loading ? 0.8 : 1 }}
+          style={{ width: "100%", opacity: loading ? 0.85 : 1 }}
         >
           {loading ? "Signing in…" : "Login"}
         </button>

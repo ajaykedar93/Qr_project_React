@@ -1,11 +1,21 @@
 import React from "react";
-import { createRoot } from "react-dom/client";
+import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
-import "./index.css"; // optional
-import "./App.css";   // optional
 
-createRoot(document.getElementById("root")).render(
+// Global styles
+import "./index.css";
+import "./App.css";
+
+// Ensure full-viewport wrapper
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element #root not found in index.html");
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <App />
+    <div className="app">
+      <App />
+    </div>
   </React.StrictMode>
 );
