@@ -13,7 +13,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // Pages
-import Home from "./Pages/Home.jsx";           // ⬅️ Home page
+import Home from "./Pages/Home.jsx"; // ⬅️ Home page
 import Register from "./Pages/Register.jsx";
 import Login from "./Pages/Login.jsx";
 import Dashboard from "./Pages/Dashboard.jsx";
@@ -21,25 +21,16 @@ import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
-import Conert from "./Pages/Conert.jsx";
-
 
 /* ---------- Bright Theme (matches Home.jsx palette) ---------- */
 const THEME = {
-  // App background uses the same soft radial overlays + pastel gradient look
   bg: `linear-gradient(135deg, #FFF7E6 0%, #E6F8FF 52%, #F6E5FF 100%)`,
   pageMinH: "100vh",
-
-  // Top bar: bright, glassy, pastel gradient (no dark/black)
-  barBgFrom: "#FFD54A",  // lemon
-  barBgTo: "#7C5CFF",    // bright indigo
+  barBgFrom: "#FFD54A",
+  barBgTo: "#7C5CFF",
   barBorder: "rgba(124,92,255,.35)",
-  barInk: "#2F1B70",     // vivid purple text (not black)
-
-  // Light glass for borders/fills on pastel UI
+  barInk: "#2F1B70",
   lightGlass: "rgba(124,92,255,.22)",
-
-  // Soft shadows in color (no black shadows)
   shadow: "0 10px 30px rgba(124,92,255,.28)",
 };
 
@@ -182,7 +173,20 @@ function Topbar() {
     cursor: "pointer",
   };
 
-  const hideAuthOnHome = pathname === "/" && !isAuthed();
+  // Route helpers
+  const onHome = pathname === "/";
+
+  // Show left nav buttons only when authed AND not on Home
+  const showNavButtons = isAuthed() && !onHome;
+
+  // Show email + Logout only when authed AND not on Home
+  const showRightAuth = isAuthed() && !onHome;
+
+  // Show Login/Register only for guests AND not on Home
+  const showGuestButtons = !isAuthed() && !onHome;
+
+  // Hide burger entirely on Home (clean hero)
+  const showBurger = !onHome;
 
   return (
     <header style={barStyle}>
@@ -204,9 +208,9 @@ function Topbar() {
         Secure-Doc
       </Link>
 
-      {/* Desktop nav (only when authed) */}
+      {/* Desktop nav (authed & not on Home) */}
       <nav style={{ ...navWrap, display: "none" }} className="nav-desktop">
-        {isAuthed() && (
+        {showNavButtons && (
           <>
             <Link
               className="btn btn-light"
@@ -230,9 +234,9 @@ function Topbar() {
         )}
       </nav>
 
-      {/* Right section (desktop) — hides Login/Register on Home when not authed */}
+      {/* Right section (desktop) */}
       <div style={{ ...rightWrap, display: "none" }} className="right-desktop">
-        {hideAuthOnHome ? null : isAuthed() ? (
+        {showRightAuth ? (
           <>
             <span style={{ fontSize: 13, opacity: 0.95, whiteSpace: "nowrap" }}>
               {user?.email}
@@ -250,7 +254,7 @@ function Topbar() {
               Logout
             </button>
           </>
-        ) : (
+        ) : showGuestButtons ? (
           <>
             <Link
               className="btn btn-light"
@@ -274,24 +278,26 @@ function Topbar() {
               Register
             </Link>
           </>
-        )}
+        ) : null}
       </div>
 
-      {/* Mobile burger */}
-      <button
-        aria-label="Toggle menu"
-        aria-expanded={open}
-        aria-controls="mobile-menu"
-        style={{ ...burgerBtn, display: "inline-flex" }}
-        className="burger"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" role="img">
-          <path d="M4 6h16M4 12h16M4 18h16" stroke={THEME.barInk} strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </button>
+      {/* Mobile burger (hidden on Home) */}
+      {showBurger && (
+        <button
+          aria-label="Toggle menu"
+          aria-expanded={open}
+          aria-controls="mobile-menu"
+          style={{ ...burgerBtn, display: "inline-flex" }}
+          className="burger"
+          onClick={() => setOpen((v) => !v)}
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" role="img">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke={THEME.barInk} strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
 
-      {/* Mobile sheet (also hides auth on Home if not authed) */}
+      {/* Mobile sheet (no items on Home) */}
       <div
         id="mobile-menu"
         style={{
@@ -302,7 +308,7 @@ function Topbar() {
           borderRadius: 14,
           backdropFilter: "blur(10px)",
           padding: 12,
-          display: open ? "grid" : "none",
+          display: open && !onHome ? "grid" : "none",
           gap: 8,
           zIndex: 60,
           boxShadow: "0 20px 48px rgba(124,92,255,.30)",
@@ -310,12 +316,15 @@ function Topbar() {
       >
         {isAuthed() ? (
           <>
+            {/* Left nav (only off-Home) */}
             <Link to="/dashboard" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Dashboard
             </Link>
             <Link to="/scan" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Scan QR
             </Link>
+
+            {/* Right auth (email + logout) */}
             <div
               style={{
                 display: "grid",
@@ -324,7 +333,15 @@ function Topbar() {
                 alignItems: "center",
               }}
             >
-              <span style={{ fontSize: 13, opacity: 0.95, overflow: "hidden", textOverflow: "ellipsis", color: THEME.barInk }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  opacity: 0.95,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  color: THEME.barInk,
+                }}
+              >
                 {user?.email}
               </span>
               <button
@@ -341,9 +358,8 @@ function Topbar() {
               </button>
             </div>
           </>
-        ) : hideAuthOnHome ? (
-          <></>
         ) : (
+          // Guest menu (Login/Register) only off-Home
           <>
             <Link to="/login" onClick={() => setOpen(false)} style={btnHover({ textAlign: "center" })}>
               Login
@@ -428,7 +444,7 @@ export default function App() {
           </Routes>
         </main>
 
-        {/* Toasts on bright theme (still fine with dark mode for container) */}
+        {/* Toasts on bright theme */}
         <ToastContainer position="top-right" autoClose={2500} theme="dark" />
       </div>
     </BrowserRouter>
