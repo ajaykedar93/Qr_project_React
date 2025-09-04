@@ -21,6 +21,8 @@ import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
+import Conert from "./Pages/Conert.jsx";
+
 
 /* ---------- Bright Theme (matches Home.jsx palette) ---------- */
 const THEME = {

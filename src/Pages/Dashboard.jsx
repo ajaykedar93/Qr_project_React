@@ -511,33 +511,37 @@ export default function Dashboard() {
       {/* Tabs */}
       <div className="tabs" role="tablist" aria-label="Dashboard sections">
         <button
-          onClick={() => setActiveTab("docs")}
-          className={`tab ${activeTab === "docs" ? "active" : ""}`}
-          style={{ ["--tab-accent"]: "#2fbf71" }}
-        >
-          📂 My Documents
-        </button>
-        <button
-          onClick={() => setActiveTab("private")}
-          className={`tab ${activeTab === "private" ? "active" : ""}`}
-          style={{ ["--tab-accent"]: "#22c08a" }}
-        >
-          🔒 Private Shares
-        </button>
-        <button
-          onClick={() => setActiveTab("public")}
-          className={`tab ${activeTab === "public" ? "active" : ""}`}
-          style={{ ["--tab-accent"]: "#19d3a2" }}
-        >
-          🌍 Public Shares
-        </button>
-        <button
-          onClick={() => setActiveTab("received")}
-          className={`tab ${activeTab === "received" ? "active" : ""}`}
-          style={{ ["--tab-accent"]: "#ffbf5e" }}
-        >
-          📥 Received
-        </button>
+  onClick={() => setActiveTab("docs")}
+  className={`tab ${activeTab === "docs" ? "active" : ""}`}
+  style={{ ["--tab-accent"]: "#7C5CFF" }}    // indigo
+>
+  📂 My Documents
+</button>
+
+<button
+  onClick={() => setActiveTab("private")}
+  className={`tab ${activeTab === "private" ? "active" : ""}`}
+  style={{ ["--tab-accent"]: "#FF4D88" }}    // hot pink
+>
+  🔒 Private Shares
+</button>
+
+<button
+  onClick={() => setActiveTab("public")}
+  className={`tab ${activeTab === "public" ? "active" : ""}`}
+  style={{ ["--tab-accent"]: "#22D3EE" }}    // bright cyan
+>
+  🌍 Public Shares
+</button>
+
+<button
+  onClick={() => setActiveTab("received")}
+  className={`tab ${activeTab === "received" ? "active" : ""}`}
+  style={{ ["--tab-accent"]: "#FFD54A" }}    // lemon
+>
+  📥 Received
+</button>
+
       </div>
 
       {/* Content: Cards */}
