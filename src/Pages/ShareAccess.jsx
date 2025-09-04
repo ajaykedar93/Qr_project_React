@@ -186,95 +186,160 @@ export default function ShareAccess() {
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "56px auto", padding: "0 16px" }}>
-      {/* Bright background wrapper */}
+    <div style={{ maxWidth: 720, margin: "56px auto", padding: "0 16px" }}>
+      {/* Bright theme (no dark shades) */}
       <style>{`
         body {
-          background: linear-gradient(180deg, #EFFFF7 0%, #E3FFEF 50%, #DBFFF0 100%);
-          font-family: 'Inter', sans-serif;
+          background:
+            radial-gradient(40rem 24rem at 12% 88%, rgba(32,165,90,.14) 0%, rgba(32,165,90,0) 60%),
+            radial-gradient(36rem 22rem at 88% 10%, rgba(25,211,162,.14) 0%, rgba(25,211,162,0) 60%),
+            linear-gradient(180deg, #EEFFF6 0%, #E6FFF2 45%, #F4FFF9 100%);
+          font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
         }
+
+        .card {
+          background:
+            radial-gradient(120% 140% at -10% -20%, rgba(32,165,90,.10), transparent 60%),
+            radial-gradient(120% 140% at 120% 120%, rgba(25,211,162,.10), transparent 60%),
+            #ffffff;
+          border: 1px solid #e6f5ee;
+          border-radius: 18px;
+          padding: clamp(18px, 3vw, 24px);
+          box-shadow: 0 22px 56px rgba(31,187,112,.20);
+        }
+
+        .title {
+          margin: 0 0 8px;
+          font-weight: 900;
+          font-size: clamp(20px, 3.4vw, 26px);
+          background: linear-gradient(90deg,#16884a,#19d3a2,#22d3ee);
+          -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+
+        .status-chip {
+          margin-left: auto;
+          font-size: 12px;
+          padding: 4px 12px;
+          border-radius: 999px;
+          border: 1px solid #d8f1e7;
+          background: #f2fffb;
+          color: #0d6b4f;
+          font-weight: 800;
+        }
+
+        .status-private { background:#eaf1ff; border-color:#dbe6ff; color:#2b54c1; }
+        .status-public  { background:#eafff5; border-color:#c8f6e7; color:#108a63; }
+        .status-unknown { background:#fff8e6; border-color:#ffe5a3; color:#a05a00; }
+
+        .desc {
+          background: #f4fff9;
+          border: 1px solid #d6f5e6;
+          padding: 12px;
+          border-radius: 12px;
+          font-size: 13.5px;
+          margin-bottom: 12px;
+          color: #144a39;
+        }
+
+        .row { display:grid; gap:10px; }
+        .input {
+          padding: 12px 14px;
+          border-radius: 12px;
+          border: 1px solid #d9f1e4;
+          background: #fbfffd;
+          color: #133426;
+          width: 100%;
+          transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.9);
+        }
+        .input::placeholder { color: rgba(22,136,74,.55); }
+        .input:focus {
+          border-color: #2fbf71;
+          box-shadow: 0 0 0 6px rgba(31,187,112,.22);
+          transform: translateY(-1px);
+          outline: none;
+        }
+
         .btn {
-          padding: 8px 14px;
-          border-radius: 8px;
+          padding: 12px 16px;
+          border-radius: 14px;
           border: none;
           cursor: pointer;
-          font-weight: 600;
+          font-weight: 800;
+          transition: transform .06s ease, box-shadow .2s ease, filter .2s ease, opacity .2s ease;
         }
-        .btn-primary { background: linear-gradient(90deg,#5b8cff,#19d3a2); color: #fff; }
-        .btn-primary:hover { filter: brightness(1.05); }
-        .btn-ghost { background: #eef2ff; color: #2b3c6b; }
-        .btn-danger { background: #ff6b6b; color: #fff; }
-        .btn-danger:hover { filter: brightness(1.05); }
-        .input {
-          padding: 10px;
-          border-radius: 10px;
-          border: 1px solid #d8e2ff;
-          background: #f8fbff;
-          color: #142251;
-          width: 100%;
+        .btn:active { transform: translateY(1px) }
+        .btn-primary {
+          color: #fff;
+          background-image: linear-gradient(90deg, #20a55a, #19d3a2, #22d3ee);
+          box-shadow: 0 16px 38px rgba(25,211,162,.26);
         }
+        .btn-primary:hover { filter: brightness(1.04); box-shadow: 0 18px 42px rgba(25,211,162,.32); }
+        .btn-ghost {
+          background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.82));
+          color: #16884a;
+          border: 1px solid #d9f1e4;
+        }
+        .btn-ghost:hover { filter: brightness(1.05); }
+
+        .tiny {
+          font-size: 12px;
+          opacity: .8;
+        }
+
         .chip {
           display:inline-block; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:800;
           border:1px solid #dbe6ff; background:#eaf1ff; color:#2b54c1;
         }
+
+        .muted { color:#5d7c6f; }
+        code { background:#f3fff9; padding:2px 6px; border-radius:6px; border:1px solid #daf3ea; }
       `}</style>
 
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{
-          background: "#fff",
-          border: "1px solid #d6f5e6",
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 10px 30px rgba(0,0,0,.1)",
-          color: "#111",
-        }}
+        transition={{ duration: 0.4 }}
+        className="card"
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 8 }}>
-          <h2 style={{ margin: 0, color: "#0a8f6a" }}>Access Shared Document</h2>
+          <h2 className="title">Access Shared Document</h2>
           <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 12,
-              padding: "2px 10px",
-              borderRadius: 999,
-              background:
-                access === "private" ? "#cce6ff" :
-                access === "public"  ? "#ccffe6" :
-                "#eee",
-              color:
-                access === "private" ? "#0066cc" :
-                access === "public"  ? "#009966" :
-                "#666",
-            }}
+            className={
+              "status-chip " +
+              (loadingShare
+                ? "status-unknown"
+                : access === "private"
+                ? "status-private"
+                : access === "public"
+                ? "status-public"
+                : "status-unknown")
+            }
           >
-            {loadingShare ? "Resolving…" : (access ? access.toUpperCase() : (expiredOrRevoked ? "UNAVAILABLE" : "—"))}
+            {loadingShare
+              ? "Resolving…"
+              : access
+              ? access.toUpperCase()
+              : expiredOrRevoked
+              ? "UNAVAILABLE"
+              : "—"}
           </span>
         </div>
 
-        <div style={{ fontSize: 13, opacity: .85, marginBottom: 10 }}>
-          Share ID: <code>{shareId}</code> {tokenParam && <span className="chip" style={{ marginLeft: 8 }}>token</span>}
+        <div className="tiny">
+          Share ID: <code>{shareId}</code>{" "}
+          {tokenParam && <span className="chip" style={{ marginLeft: 8 }}>token</span>}
         </div>
 
         {/* PRIVATE FLOW */}
         {access === "private" && (
           <>
-            <div
-              style={{
-                background: "#f4fff9",
-                border: "1px solid #d6f5e6",
-                padding: 12,
-                borderRadius: 12,
-                fontSize: 13.5,
-                marginBottom: 12,
-              }}
-            >
+            <div className="desc" style={{ marginTop: 12 }}>
               <b>Verify identity:</b> enter your <b>registered email</b> to open this document.
               {recipientEmail && <> This share is intended for <b>{recipientEmail}</b>.</>}
             </div>
 
-            <div style={{ display: "grid", gap: 10 }}>
+            <div className="row">
               <input
                 className="input"
                 placeholder="Enter your registered email"
@@ -285,17 +350,17 @@ export default function ShareAccess() {
               />
 
               {!!email && (
-                <div style={{ fontSize: 12 }}>
+                <div className="tiny" style={{ marginTop: -4 }}>
                   {checking && <span style={{ opacity: .85 }}>Checking…</span>}
                   {!checking && !!emailMsg && (
                     <span style={{ color:
-                      exists === true ? "#009966" :
-                      exists === false ? "#cc0000" : "#555" }}>
+                      exists === true ? "#108a63" :
+                      exists === false ? "#cc4d00" : "#4a6a5c" }}>
                       {emailMsg}
                     </span>
                   )}
                   {!checking && exists === true && !emailMatchesIntended && (
-                    <div style={{ color: "#cc6600" }}>
+                    <div style={{ color: "#a05a00", marginTop: 4 }}>
                       This link is intended for <b>{recipientEmail}</b>.
                     </div>
                   )}
@@ -307,42 +372,40 @@ export default function ShareAccess() {
                   {sendingOtp ? "Sending…" : (resendIn ? `Resend in ${resendIn}s` : (otpSent ? "Resend OTP" : "Send OTP"))}
                 </button>
                 {otpSent && expiresAt && (
-                  <div style={{ fontSize: 12, opacity: .75, alignSelf: "center" }}>
+                  <div className="tiny" style={{ alignSelf: "center" }}>
                     OTP expires at: {expiresAt}
                   </div>
                 )}
               </div>
 
               {otpSent && (
-                <>
-                  <input
-                    className="input"
-                    placeholder="Enter OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    inputMode="numeric"
-                    onKeyDown={(e) => { if (e.key === "Enter" && otp) verifyOtp(); }}
-                  />
-                </>
+                <input
+                  className="input"
+                  placeholder="Enter OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  inputMode="numeric"
+                  onKeyDown={(e) => { if (e.key === "Enter" && otp) verifyOtp(); }}
+                />
               )}
             </div>
 
-            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
               <button className="btn btn-primary" onClick={verifyOtp} disabled={!otpSent || !otp || verifying}>
                 {verifying ? "Verifying…" : "Verify & Open"}
               </button>
               <Link className="btn btn-ghost" to="/dashboard">Back</Link>
             </div>
 
-            <div style={{ marginTop: 12, fontSize: 12.5, opacity: .8 }}>
-              <b>Note:</b> Document will be available only after successful verification.
+            <div className="tiny" style={{ marginTop: 12 }}>
+              <b>Note:</b> The document opens after successful verification.
             </div>
           </>
         )}
 
         {/* Unavailable */}
         {access == null && !loadingShare && expiredOrRevoked && (
-          <div style={{ marginTop: 8, fontSize: 13, opacity: .85, color: "#cc0000" }}>
+          <div className="tiny" style={{ marginTop: 10, color: "#cc4d00" }}>
             This share is not available. It may have been revoked or expired.
           </div>
         )}

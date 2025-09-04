@@ -42,44 +42,46 @@ export default function Login() {
 
   const pageWrap = {
     width: "100%",
-    minHeight: "calc(100svh - 56px)", // full viewport minus navbar
+    minHeight: "calc(100svh - 56px)",
     display: "grid",
     placeItems: "center",
     padding: "clamp(18px, 4vw, 40px)",
     boxSizing: "border-box",
-    // Match Home.jsx layered background
+    // Bright layered background (no dark/black)
     backgroundImage: [
-      "radial-gradient(60rem 30rem at 10% 92%, rgba(255,106,61,.45) 0%, rgba(255,106,61,0) 60%)",
-      "radial-gradient(55rem 28rem at 92% 8%, rgba(255,0,128,.40) 0%, rgba(255,0,128,0) 60%)",
-      "linear-gradient(145deg, #1a0f3a 0%, #0e0f3a 100%)",
+      "radial-gradient(46rem 24rem at 12% 90%, rgba(255,106,61,.25) 0%, rgba(255,106,61,0) 60%)",
+      "radial-gradient(42rem 22rem at 88% 12%, rgba(255,77,136,.22) 0%, rgba(255,77,136,0) 60%)",
+      "linear-gradient(135deg, #FFF7E6 0%, #E6F8FF 52%, #F6E5FF 100%)",
     ].join(","),
   };
 
   return (
     <div style={pageWrap}>
-      {/* Inline dark theme that mirrors Home.jsx palette */}
+      {/* Bright theme variables */}
       <style>{`
         :root {
-          --ink-strong: #f7c43d;  /* yellow heading ink (matches Home title) */
-          --ink-soft:   #cdd1ff;  /* soft text */
-          --ink-body:   #e8e6ff;  /* body text high-contrast */
-          --card:       #16122b;  /* deep card */
-          --line:       rgba(255,255,255,.08);
-          --accent1:    #ff5b93;
-          --accent2:    #d246a1;
-          --accent3:    #bf3ea0;
-          --focus:      rgba(255,91,147,.35);
+          --ink-strong: #2f1b70;  /* vivid purple for headings (high contrast, not black) */
+          --ink-soft:   #5b3fb8;  /* soft vivid purple */
+          --ink-body:   #3a2a88;  /* readable text tone */
+          --card:       #ffffff;  /* clean white card */
+          --line:       rgba(124,92,255,.25);
+          --accent1:    #ff6a3d;  /* bright orange */
+          --accent2:    #ff4d88;  /* hot pink */
+          --accent3:    #7c5cff;  /* bright indigo */
+          --focus:      rgba(124,92,255,.25);
+          --bg-chip:    linear-gradient(90deg, rgba(255,213,74,.25), rgba(124,92,255,.2));
         }
 
         .card {
-          background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+          background:
+            linear-gradient(180deg, rgba(255,255,255,.8), rgba(255,255,255,.7));
           border: 1px solid var(--line);
           border-radius: 18px;
           padding: clamp(22px, 3.6vw, 28px);
           width: min(560px, 100%);
           box-shadow:
-            0 18px 50px rgba(0,0,0,.35),
-            inset 0 0 0 1px rgba(255,255,255,.02);
+            0 22px 60px rgba(124,92,255,.18),
+            inset 0 0 0 1px rgba(255,255,255,.3);
           backdrop-filter: blur(6px);
         }
 
@@ -111,18 +113,17 @@ export default function Login() {
           padding: 12px 14px;
           border-radius: 12px;
           border: 1px solid var(--line);
-          background: rgba(255,255,255,.06);
+          background: #ffffff;                 /* bright input surface */
           color: var(--ink-body);
           outline: none;
-          transition: box-shadow .15s ease, border-color .15s ease, background .15s ease, transform .12s ease;
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+          transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,.8);
         }
-        .input::placeholder { color: rgba(205,209,255,.6); }
+        .input::placeholder { color: rgba(91,63,184,.6); }
         .input:focus {
-          border-color: var(--accent1);
-          box-shadow: 0 0 0 5px var(--focus);
+          border-color: var(--accent3);
+          box-shadow: 0 0 0 6px var(--focus);
           transform: translateY(-1px);
-          background: rgba(255,255,255,.08);
         }
 
         .btn {
@@ -137,19 +138,20 @@ export default function Login() {
 
         .btn-primary {
           color: #fff;
-          background-image: linear-gradient(180deg, var(--accent1) 0%, var(--accent2) 100%);
-          box-shadow: 0 12px 30px rgba(210, 70, 161, .42);
+          background-image: linear-gradient(90deg, var(--accent1), var(--accent2));
+          box-shadow: 0 16px 38px rgba(255,77,136,.32);
         }
         .btn-primary:hover {
-          filter: brightness(1.03);
-          box-shadow: 0 14px 34px rgba(210, 70, 161, .48);
+          filter: brightness(1.04);
+          box-shadow: 0 18px 42px rgba(255,77,136,.38);
         }
+
         .btn-ghost {
-          background: rgba(255,255,255,.08);
-          color: #f2f0ff;
+          background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.75));
+          color: var(--ink-strong);
           border: 1px solid var(--line);
         }
-        .btn-ghost:hover { filter: brightness(1.06) }
+        .btn-ghost:hover { filter: brightness(1.05) }
 
         .helper {
           margin-top: 12px;
@@ -157,7 +159,7 @@ export default function Login() {
           color: var(--ink-soft);
         }
         .link {
-          color: #ffd166;
+          color: #ffb300;         /* lemon-ish link for brightness */
           text-decoration: none;
           font-weight: 800;
         }
@@ -168,6 +170,18 @@ export default function Login() {
           background: var(--line);
           margin: 16px 0;
           border-radius: 999px;
+        }
+
+        /* Optional header chip style if you add badges later */
+        .chip {
+          display:inline-flex;align-items:center;gap:8px;
+          background: var(--bg-chip);
+          color: var(--ink-strong);
+          padding: 6px 10px;
+          border: 1px solid var(--line);
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 12px;
         }
       `}</style>
 
@@ -226,14 +240,14 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Divider (optional) */}
+        {/* Divider */}
         <div className="sep" />
 
         {/* Submit */}
         <button
           className="btn btn-primary"
           disabled={loading}
-          style={{ width: "100%", opacity: loading ? 0.85 : 1 }}
+          style={{ width: "100%", opacity: loading ? 0.9 : 1 }}
         >
           {loading ? "Signing in…" : "Login"}
         </button>

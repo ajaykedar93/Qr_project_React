@@ -116,7 +116,6 @@ export default function ViewDoc() {
         const resp = await axios.get(rawViewUrl, { responseType: "blob", headers: buildHeaders() });
         // Text preview: try reading text if strategy is 'text'
         if (meta.preview_strategy === "text") {
-          // read as text safely
           const txt = await resp.data.text();
           setTextContent(txt);
         }
@@ -160,11 +159,9 @@ export default function ViewDoc() {
     const isPublicFlow  = !!shareId && viewOnly;
 
     if (isPrivateFlow || ownerAuthed) {
-      // If we have blobUrl, open that; else try raw (headers won't pass)
       const url = blobUrl || rawViewUrl;
       window.open(url, "_blank", "noopener,noreferrer");
     } else if (isPublicFlow) {
-      // Office docs go through Office viewer
       if (isOffice(meta.mime_type, meta.file_name) || meta.preview_strategy === "office") {
         const office = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(rawViewUrl)}`;
         window.open(office, "_blank", "noopener,noreferrer");
@@ -199,7 +196,6 @@ export default function ViewDoc() {
 
     switch (strategy) {
       case "pdf":
-        // PDF inline via <iframe>. For blob we already have object URL.
         return src ? (
           <iframe
             title="PDF"
@@ -221,7 +217,6 @@ export default function ViewDoc() {
           <video controls style={avStyle()} src={src} />
         ) : fallbackInfo();
       case "text":
-        // If blob mode we already decoded to textContent; for public we'll just iframe raw (so CORS-safe)
         if (useBlob) {
           return (
             <pre style={preStyle()}>
@@ -229,7 +224,6 @@ export default function ViewDoc() {
             </pre>
           );
         }
-        // Public: fetch displayed in iframe (raw text will render in browser)
         return (
           <iframe
             title="Text"
@@ -239,18 +233,13 @@ export default function ViewDoc() {
           />
         );
       case "office":
-        // Always use Office viewer for public; for private/owner we still use blob iframe (Office cannot read protected blob)
         if (!useBlob) {
-          return (
-            <iframe title="Office" src={src} style={frameStyle()} />
-          );
+          return <iframe title="Office" src={src} style={frameStyle()} />;
         }
-        // For owner/private Office files, just stream blob in iframe; browser will download unless it can render
         return blobUrl ? (
           <iframe title="Office Blob" src={blobUrl} style={frameStyle()} />
         ) : fallbackInfo("Preview might be limited for protected Office files. Use Download.");
       default:
-        // other: show inline iframe (may download) + tips
         return (
           <div style={{ display: "grid", gap: 10 }}>
             {src && (
@@ -331,7 +320,7 @@ function Ribbon({ text }) {
   return (
     <div style={{
       position: "absolute", top: 12, right: -44, transform: "rotate(35deg)",
-      background: "var(--line)", color: "var(--muted)",
+      background: "#F2FBFF", color: "#3B74B6",
       padding: "6px 64px", fontSize: 12, border: "1px solid var(--line)"
     }}>{text}</div>
   );
@@ -342,8 +331,8 @@ const avStyle = () => ({ width: "100%", maxWidth: 900, margin: "0 auto", display
 const preStyle = () => ({
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
-  background: "#0b1226",
-  color: "#e6f0ff",
+  background: "#F9FCFF",          // bright
+  color: "#142251",               // readable ink
   border: "1px solid var(--line)",
   borderRadius: 12,
   padding: 14,
@@ -370,18 +359,24 @@ function Styles() {
         border: 1px solid #d6f5e6;
         border-radius: 16px;
         padding: 16px;
-        box-shadow: 0 10px 30px rgba(0,0,0,.06);
+        box-shadow: 0 12px 28px rgba(31,187,112,.16); /* bright, soft */
         color: #0a1633;
       }
+      .muted { color: var(--muted); }
+
       .btn {
         border: none; border-radius: 10px; padding: 8px 12px; font-weight: 700; cursor: pointer;
-        transition: transform .08s, box-shadow .12s;
+        transition: transform .08s, box-shadow .12s, filter .12s;
       }
       .btn:active { transform: translateY(1px); }
-      .btn-primary { background: linear-gradient(90deg,#5b8cff,#19d3a2); color: #fff; box-shadow: 0 8px 18px rgba(25,211,162,.25); }
-      .btn-primary:hover{ box-shadow: 0 10px 22px rgba(25,211,162,.3); }
-      .btn-ghost { background: #eef2ff; color: #2b3c6b; }
-      .btn-disabled { background: #f0f2f7; color: #9aa4c7; cursor: not-allowed; }
+      .btn-primary {
+        background: linear-gradient(90deg,#5b8cff,#19d3a2);
+        color: #fff; box-shadow: 0 10px 24px rgba(25,211,162,.24);
+      }
+      .btn-primary:hover{ box-shadow: 0 14px 30px rgba(25,211,162,.30); }
+      .btn-ghost { background: #eef6ff; color: #2b3c6b; border: 1px solid #e2ecff; }
+      .btn-ghost:hover { filter: brightness(1.03); }
+      .btn-disabled { background: #f0f4fb; color: #93a1c8; cursor: not-allowed; border: 1px solid #e4ecff; }
     `}</style>
   );
 }
