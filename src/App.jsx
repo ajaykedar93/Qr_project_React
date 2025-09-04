@@ -22,15 +22,23 @@ import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
 
-/* ---------- Theme (Purple + Deep) ---------- */
+/* ---------- Bright Theme (matches Home.jsx palette) ---------- */
 const THEME = {
-  bg: "#0f0c16",
+  // App background uses the same soft radial overlays + pastel gradient look
+  bg: `linear-gradient(135deg, #FFF7E6 0%, #E6F8FF 52%, #F6E5FF 100%)`,
   pageMinH: "100vh",
-  barBgFrom: "#6d28d9",
-  barBgTo: "#a21caf",
-  barBorder: "#7c3aed",
-  barInk: "#f7ecff",
-  lightGlass: "rgba(255,255,255,.08)",
+
+  // Top bar: bright, glassy, pastel gradient (no dark/black)
+  barBgFrom: "#FFD54A",  // lemon
+  barBgTo: "#7C5CFF",    // bright indigo
+  barBorder: "rgba(124,92,255,.35)",
+  barInk: "#2F1B70",     // vivid purple text (not black)
+
+  // Light glass for borders/fills on pastel UI
+  lightGlass: "rgba(124,92,255,.22)",
+
+  // Soft shadows in color (no black shadows)
+  shadow: "0 10px 30px rgba(124,92,255,.28)",
 };
 
 function isAuthed() {
@@ -112,7 +120,7 @@ function Topbar() {
     position: "sticky",
     top: 0,
     zIndex: 50,
-    boxShadow: "0 10px 30px rgba(0,0,0,.35)",
+    boxShadow: THEME.shadow,
   };
 
   const brandStyle = {
@@ -125,6 +133,7 @@ function Topbar() {
     gap: 8,
     fontSize: "clamp(16px, 3.2vw, 20px)",
     whiteSpace: "nowrap",
+    filter: "drop-shadow(0 1px 6px rgba(255,213,74,.45))",
   };
 
   const navWrap = {
@@ -141,9 +150,10 @@ function Topbar() {
     gap: 10,
   };
 
+  // Bright button base (no dark fills)
   const btnBase = {
     border: `1px solid ${THEME.lightGlass}`,
-    background: "rgba(0,0,0,.15)",
+    background: "rgba(255,255,255,.55)",
     color: THEME.barInk,
     padding: "8px 12px",
     borderRadius: 10,
@@ -152,6 +162,7 @@ function Topbar() {
     textDecoration: "none",
     whiteSpace: "nowrap",
     fontSize: 14,
+    boxShadow: "0 6px 18px rgba(124,92,255,.20)",
   };
 
   const btnHover = (s) => ({ ...btnBase, ...s });
@@ -180,10 +191,10 @@ function Topbar() {
             width: 22,
             height: 22,
             borderRadius: 6,
-            background: "rgba(255,255,255,.2)",
+            background: "linear-gradient(135deg, rgba(255,213,74,.6), rgba(124,92,255,.4))",
             display: "inline-grid",
             placeItems: "center",
-            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.25)",
+            boxShadow: "inset 0 0 0 1px rgba(255,255,255,.45)",
           }}
         >
           🔒
@@ -228,8 +239,8 @@ function Topbar() {
               className="btn btn-danger"
               onClick={logout}
               style={btnHover({
-                background: "rgba(255,0,0,.15)",
-                border: "1px solid rgba(255,0,0,.25)",
+                background: "rgba(255,107,129,.18)",
+                border: "1px solid rgba(255,107,129,.36)",
               })}
               onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
               onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
@@ -252,7 +263,7 @@ function Topbar() {
               className="btn btn-dark"
               to="/register"
               style={btnHover({
-                background: "rgba(255,255,255,.1)",
+                background: "rgba(255,255,255,.65)",
                 border: `1px solid ${THEME.lightGlass}`,
               })}
               onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(1.08)")}
@@ -284,15 +295,15 @@ function Topbar() {
         style={{
           position: "fixed",
           inset: "56px 8px auto 8px",
-          background: "linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06))",
+          background: "linear-gradient(180deg, rgba(255,255,255,.38), rgba(230,248,255,.6))",
           border: `1px solid ${THEME.lightGlass}`,
           borderRadius: 14,
-          backdropFilter: "blur(8px)",
+          backdropFilter: "blur(10px)",
           padding: 12,
           display: open ? "grid" : "none",
           gap: 8,
           zIndex: 60,
-          boxShadow: "0 20px 48px rgba(0,0,0,.45)",
+          boxShadow: "0 20px 48px rgba(124,92,255,.30)",
         }}
       >
         {isAuthed() ? (
@@ -311,7 +322,7 @@ function Topbar() {
                 alignItems: "center",
               }}
             >
-              <span style={{ fontSize: 13, opacity: 0.95, overflow: "hidden", textOverflow: "ellipsis" }}>
+              <span style={{ fontSize: 13, opacity: 0.95, overflow: "hidden", textOverflow: "ellipsis", color: THEME.barInk }}>
                 {user?.email}
               </span>
               <button
@@ -320,8 +331,8 @@ function Topbar() {
                   logout();
                 }}
                 style={btnHover({
-                  background: "rgba(255,0,0,.15)",
-                  border: "1px solid rgba(255,0,0,.25)",
+                  background: "rgba(255,107,129,.18)",
+                  border: "1px solid rgba(255,107,129,.36)",
                 })}
               >
                 Logout
@@ -415,7 +426,7 @@ export default function App() {
           </Routes>
         </main>
 
-        {/* Toasts (dark theme still works fine on the purple background) */}
+        {/* Toasts on bright theme (still fine with dark mode for container) */}
         <ToastContainer position="top-right" autoClose={2500} theme="dark" />
       </div>
     </BrowserRouter>
