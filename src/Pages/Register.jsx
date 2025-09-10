@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
 // Backend base
-const API_BASE = "https://qr-project-v0h4.onrender.com/auth";
+const API_BASE = "https://qr-project-express.onrender.com/auth";
 
 export default function Register() {
   const nav = useNavigate();

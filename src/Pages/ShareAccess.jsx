@@ -5,7 +5,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com"; // backend
+const API_BASE = "https://qr-project-express.onrender.com"; // backend
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 export default function ShareAccess() {

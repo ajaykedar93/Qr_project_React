@@ -4,7 +4,7 @@ import { useParams, useSearchParams, Link, useNavigate } from "react-router-dom"
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const API_BASE = "https://qr-project-v0h4.onrender.com";
+const API_BASE = "https://qr-project-express.onrender.com";
 
 /* -----------------------------
    Helpers

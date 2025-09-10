@@ -16,7 +16,7 @@ import {
   FaCog,
 } from "react-icons/fa";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_BASE = "https://qr-project-express.onrender.com";
 
 /* Axios with auth header from localStorage */
 const api = axios.create({ baseURL: API_BASE });
