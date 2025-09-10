@@ -19,7 +19,7 @@ import EmptyState from "./EmptyState.jsx";
 import SizeReduction from "./SizeReduction.jsx"; // ✅ NEW: reduce tab page
 
 const API_BASE = "https://qr-project-express.onrender.com";
-const FRONTEND_URL = "https://qr-project-react-n8xx.vercel.app";
+const FRONTEND_URL = "https://qr-project-react.vercel.app/";
 
 // ---------- helpers ----------
 const qrImgForShareId = (share_id) => {
