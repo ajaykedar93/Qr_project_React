@@ -16,13 +16,12 @@ import ExpiryModal from "./ExpiryModal.jsx";
 import StyleBright from "./StyleBright.jsx";
 import CardSkeleton from "./Skeleton.jsx";
 import EmptyState from "./EmptyState.jsx";
-import SizeReduction from "./SizeReduction.jsx"; // ✅ reduce tab page
-import LoadingOverlay from "./LoadingOverlay.jsx"; // ✅ FULL-PAGE LOADER
+import SizeReduction from "./SizeReduction.jsx"; 
+import LoadingOverlay from "./LoadingOverlay.jsx"; 
 
 const API_BASE = "https://qr-project-express.onrender.com";
 const FRONTEND_URL = "https://qr-project-react.vercel.app/";
 
-// ---------- helpers ----------
 const qrImgForShareId = (share_id) => {
   if (!share_id) return "";
   const url = `${FRONTEND_URL}/share/${share_id}`;
@@ -50,7 +49,7 @@ const readCache = (k, f) => {
   }
 };
 
-// email regex (loose but practical)
+
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
 
 export default function Dashboard() {
@@ -73,7 +72,7 @@ export default function Dashboard() {
 
   // state
   const [loading, setLoading] = useState(true);
-  const [busyCount, setBusyCount] = useState(0); // ✅ tracks in-flight API calls
+  const [busyCount, setBusyCount] = useState(0); 
   const incBusy = () => setBusyCount((c) => c + 1);
   const decBusy = () => setBusyCount((c) => Math.max(0, c - 1));
 
@@ -93,7 +92,7 @@ export default function Dashboard() {
     [myShares]
   );
 
-  // share modal
+
   const [shareFor, setShareFor] = useState(null); // document_id
   const [shareForm, setShareForm] = useState({
     to_user_email: "",
@@ -106,13 +105,9 @@ export default function Dashboard() {
   const [emailExists, setEmailExists] = useState(null); // true | false | null
   const emailCheckSeq = useRef(0);
 
-  // confirm/edit modals
-  const [modal, setModal] = useState(null);
-  // { type: 'deleteDoc', document_id, file_name }
-  // { type: 'deleteShare', share_id }
-  // { type: 'editExpiry', share_id, current }
 
-  // uploader (dropzone)
+  const [modal, setModal] = useState(null);
+ 
   const onDrop = (accepted) => accepted?.[0] && uploadFile(accepted[0]);
   const { getRootProps, getInputProps, isDragActive, open: openPicker } =
     useDropzone({ onDrop, noClick: true });
@@ -165,7 +160,7 @@ export default function Dashboard() {
     }
   }
 
-  // delete doc (with modal) — ✅ optimistic + verify on error
+ 
   function askDeleteDoc(d) {
     setModal({
       type: "deleteDoc",
@@ -232,7 +227,7 @@ export default function Dashboard() {
   function askDeleteShare(share_id) {
     setModal({ type: "deleteShare", share_id });
   }
-  // ✅ optimistic + verify on error
+ 
   async function confirmDeleteShare() {
     if (!modal?.share_id) return;
     const id = modal.share_id;
@@ -352,7 +347,7 @@ export default function Dashboard() {
     }
   }
 
-  // real-time email check (no overlay; lightweight)
+ 
   useEffect(() => {
     const raw = (shareForm.to_user_email || "").trim();
     if (!raw) {
@@ -542,7 +537,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Share modal */}
+ 
       <AnimatePresence>
         {shareFor && (
           <div
@@ -689,7 +684,6 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* Confirm / Edit modals */}
       <AnimatePresence>
         {modal?.type === "deleteDoc" && (
           <ConfirmModal
@@ -720,7 +714,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      {/* ✅ Full-page loading spinner while ANY API is in-flight */}
+     
       <LoadingOverlay show={loading || busyCount > 0} label="Loading…" />
     </div>
   );

@@ -5,7 +5,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 
-// Backend base
+
 const API_BASE = "https://qr-project-express.onrender.com/auth";
 
 export default function Register() {
@@ -48,7 +48,7 @@ export default function Register() {
     display: "grid",
     placeItems: "center",
     padding: "clamp(18px, 4vw, 40px)",
-    // Bright layered background (same vibe as Login.jsx)
+   
     backgroundImage: [
       "radial-gradient(46rem 24rem at 12% 90%, rgba(255,106,61,.25) 0%, rgba(255,106,61,0) 60%)",
       "radial-gradient(42rem 22rem at 88% 12%, rgba(255,77,136,.22) 0%, rgba(255,77,136,0) 60%)",
@@ -192,7 +192,7 @@ export default function Register() {
           />
         </div>
 
-        {/* Email */}
+   
         <div style={{ marginBottom: 14 }}>
           <label className="field-label" htmlFor="email">Email</label>
           <input
@@ -207,7 +207,6 @@ export default function Register() {
           />
         </div>
 
-        {/* Password */}
         <div style={{ marginBottom: 6 }}>
           <label className="field-label" htmlFor="password">Password</label>
           <div style={{ position: "relative" }}>
@@ -242,7 +241,7 @@ export default function Register() {
           <div className="hint">At least 8 characters are recommended.</div>
         </div>
 
-        {/* Submit */}
+
         <button
           className="btn btn-primary"
           disabled={loading}
@@ -251,7 +250,7 @@ export default function Register() {
           {loading ? "Creating…" : "Register"}
         </button>
 
-        {/* Helpers */}
+     
         <div className="helper">
           Already have an account?{" "}
           <Link to="/login" className="link">Login</Link>

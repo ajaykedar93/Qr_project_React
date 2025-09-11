@@ -19,15 +19,15 @@ import ShareAccess from "./Pages/ShareAccess.jsx";
 import ViewDoc from "./Pages/ViewDoc.jsx";
 import QRScanner from "./Pages/QRScanner.jsx";
 import NotFound from "./Pages/NotFound.jsx";
-import Navbar from "./Pages/Navbar.jsx"; // ✅ new navbar page
+import Navbar from "./Pages/Navbar.jsx"; 
 
-/* ---------- Bright Theme (matches Home.jsx palette) ---------- */
+
 const THEME = {
   bg: `linear-gradient(135deg, #FFF7E6 0%, #E6F8FF 52%, #F6E5FF 100%)`,
   pageMinH: "100vh",
 };
 
-/* ---------- Auth helpers ---------- */
+
 function isAuthed() {
   return !!localStorage.getItem("token");
 }
@@ -45,7 +45,7 @@ function UnauthedOnly({ children }) {
   return children;
 }
 
-/* ---------- Utilities ---------- */
+
 function ScrollToTop() {
   const { pathname, search } = useLocation();
   useEffect(() => {
@@ -66,16 +66,15 @@ export default function App() {
           width: "100%",
         }}
       >
-        {/* Top navigation bar (separated into its own component) */}
+     
         <Navbar />
 
-        {/* Routes content */}
+      
         <main style={{ minHeight: "calc(100svh - 56px)", width: "100%" }}>
           <Routes>
-            {/* PUBLIC HOME (before login) */}
+           
             <Route path="/" element={<Home />} />
 
-            {/* Auth routes (block if logged in) */}
             <Route
               path="/login"
               element={
@@ -93,11 +92,10 @@ export default function App() {
               }
             />
 
-            {/* Public share/view */}
             <Route path="/share/:shareId" element={<ShareAccess />} />
             <Route path="/view/:documentId" element={<ViewDoc />} />
 
-            {/* QR Scanner */}
+           
             <Route
               path="/scan"
               element={
@@ -107,7 +105,7 @@ export default function App() {
               }
             />
 
-            {/* Dashboard (protected) */}
+   
             <Route
               path="/dashboard"
               element={
@@ -122,8 +120,8 @@ export default function App() {
           </Routes>
         </main>
 
-        {/* Toast notifications */}
-        <ToastContainer position="top-right" autoClose={2500} theme="dark" />
+      <ToastContainer position="top-center" autoClose={2500} theme="dark" />
+
       </div>
     </BrowserRouter>
   );

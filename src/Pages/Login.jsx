@@ -5,19 +5,18 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Backend base (same pattern you use elsewhere)
 const API_BASE = "https://qr-project-express.onrender.com/auth";
 
 export default function Login() {
-  // ---- login form ----
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false); // <- we will show a full-page loader when true
+  const [loading, setLoading] = useState(false);
 
-  // ---- forgot-password modal ----
+
   const [fpOpen, setFpOpen] = useState(false);
-  const [fpStep, setFpStep] = useState("email"); // 'email' | 'otp' | 'reset'
+  const [fpStep, setFpStep] = useState("email"); 
   const [fpEmail, setFpEmail] = useState("");
   const [fpOtp, setFpOtp] = useState("");
   const [fpNewPwd, setFpNewPwd] = useState("");
@@ -50,7 +49,7 @@ export default function Login() {
     }
   }
 
-  // ---- Forgot Password actions ----
+
   function openForgot() {
     setFpOpen(true);
     setFpStep("email");
@@ -64,7 +63,7 @@ export default function Login() {
     setFpBusy(false);
   }
 
-  // 1) Send OTP -> POST /auth/forgot  { email }
+
   async function fpSendOtp(e) {
     e?.preventDefault?.();
     if (!fpEmail) return toast.error("Enter your email");
@@ -80,7 +79,7 @@ export default function Login() {
     }
   }
 
-  // 2) Verify OTP -> POST /auth/reset/verify  { email, otp }
+ 
   async function fpVerifyOtp(e) {
     e?.preventDefault?.();
     if (!fpOtp) return toast.error("Enter the OTP");
@@ -100,7 +99,7 @@ export default function Login() {
     }
   }
 
-  // 3) Reset password -> POST /auth/reset  { email, otp, new_password }
+ 
   async function fpResetPwd(e) {
     e?.preventDefault?.();
     if (!fpNewPwd || !fpNewPwd2) return toast.error("Enter and confirm your new password");
@@ -141,7 +140,7 @@ export default function Login() {
 
   return (
     <div style={pageWrap}>
-      {/* Bright theme variables + modal styles + screen loader styles */}
+     
       <style>{`
         :root {
           --ink-strong: #2f1b70;
@@ -314,7 +313,6 @@ export default function Login() {
           {loading ? "Signing in…" : "Login"}
         </button>
 
-        {/* Helpers */}
         <div className="helper">
           New here?{" "}
           <Link to="/register" className="link">
@@ -333,7 +331,6 @@ export default function Login() {
         </div>
       </motion.form>
 
-      {/* Forgot Password Modal */}
       <AnimatePresence>
         {fpOpen && (
           <motion.div
@@ -352,7 +349,7 @@ export default function Login() {
                 {fpStep === "reset" && "Set a new password"}
               </div>
 
-              {/* Step: Email */}
+       
               {fpStep === "email" && (
                 <>
                   <p className="muted" style={{ marginTop: 2 }}>
@@ -380,7 +377,7 @@ export default function Login() {
                 </>
               )}
 
-              {/* Step: OTP */}
+          
               {fpStep === "otp" && (
                 <>
                   <p className="muted" style={{ marginTop: 2 }}>
@@ -457,7 +454,7 @@ export default function Login() {
         )}
       </AnimatePresence>
 
-      {/* ✅ Full-page loading overlay while logging in */}
+     
       <AnimatePresence>
         {loading && (
           <motion.div
