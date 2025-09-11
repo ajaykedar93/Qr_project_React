@@ -1,3 +1,4 @@
+// src/Pages/Dashboard/StyleBright.jsx
 export default function StyleBright() {
   return (
     <style>{`
@@ -126,6 +127,67 @@ html, body, #root {
 /* motion preference */
 @media (prefers-reduced-motion: reduce){
   *{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition:none !important; scroll-behavior:auto !important;}
+}
+
+/* ======================================================================
+   BRIGHTEN PRIVATE & PUBLIC SHARE LIST + CARDS (override any dark styles)
+   ====================================================================== */
+
+/* Make the share panels themselves bright */
+#panel-private, #panel-public {
+  background:
+    radial-gradient(900px 420px at 10% -10%, rgba(124,92,255,.18), transparent 60%),
+    radial-gradient(900px 420px at 90% -20%, rgba(34,211,238,.16), transparent 55%),
+    linear-gradient(180deg, #FFFFFF, #F8F4FF);
+  border-radius: 18px;
+  padding: 6px;
+}
+
+/* Ensure cards inside private/public are light — even if a component added dark */
+#panel-private .card, #panel-public .card {
+  background:
+    radial-gradient(1200px 600px at -10% -20%, rgba(124,92,255,.14), transparent 60%),
+    radial-gradient(900px 520px at 110% -30%, rgba(34,211,238,.12), transparent 55%),
+    #FFFFFF !important;
+  color: var(--ink) !important;
+  border-color: rgba(124,92,255,.28) !important;
+  box-shadow: 0 10px 26px rgba(124,92,255,.16), inset 0 0 0 1px rgba(255,255,255,.35) !important;
+}
+
+/* If SentCard injected a glowing ::before layer for darkness, soften/align it */
+#panel-private .card::before, #panel-public .card::before {
+  opacity: .14 !important;
+  filter: blur(22px) !important;
+}
+
+/* Tweak headings/meta within share cards for readability on bright bg */
+#panel-private .card .file-title,
+#panel-public  .card .file-title { color: var(--ink) !important; }
+#panel-private .card .meta,
+#panel-public  .card .meta { color: var(--ink-soft) !important; }
+
+/* Buttons inside share cards: brighten defaults */
+#panel-private .card .btn,
+#panel-public  .card .btn {
+  background: rgba(124,92,255,.10) !important;
+  color: var(--ink) !important;
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.28), 0 6px 18px rgba(124,92,255,.12) !important;
+}
+#panel-private .card .btn:hover,
+#panel-public  .card .btn:hover {
+  background: rgba(124,92,255,.16) !important;
+}
+
+#panel-private .card .btn-accent,
+#panel-public  .card .btn-accent {
+  color: #0b1220 !important; /* accent stays readable */
+}
+
+/* QR tile on bright background */
+#panel-private .card .qr-img,
+#panel-public  .card .qr-img {
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.22), 0 8px 18px rgba(124,92,255,.12) !important;
 }
 `}</style>
   );

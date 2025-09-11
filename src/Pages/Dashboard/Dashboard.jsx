@@ -16,7 +16,8 @@ import ExpiryModal from "./ExpiryModal.jsx";
 import StyleBright from "./StyleBright.jsx";
 import CardSkeleton from "./Skeleton.jsx";
 import EmptyState from "./EmptyState.jsx";
-import SizeReduction from "./SizeReduction.jsx"; // ✅ NEW: reduce tab page
+import SizeReduction from "./SizeReduction.jsx"; // ✅ reduce tab page
+import LoadingOverlay from "./LoadingOverlay.jsx"; // ✅ FULL-PAGE LOADER
 
 const API_BASE = "https://qr-project-express.onrender.com";
 const FRONTEND_URL = "https://qr-project-react.vercel.app/";
@@ -72,6 +73,10 @@ export default function Dashboard() {
 
   // state
   const [loading, setLoading] = useState(true);
+  const [busyCount, setBusyCount] = useState(0); // ✅ tracks in-flight API calls
+  const incBusy = () => setBusyCount((c) => c + 1);
+  const decBusy = () => setBusyCount((c) => Math.max(0, c - 1));
+
   const [docs, setDocs] = useState(() => readCache("docs_cache", []));
   const [myShares, setMyShares] = useState(() =>
     readCache("myshares_cache", [])
@@ -140,6 +145,7 @@ export default function Dashboard() {
 
   // upload
   async function uploadFile(file) {
+    incBusy();
     try {
       const form = new FormData();
       form.append("file", file);
@@ -154,10 +160,12 @@ export default function Dashboard() {
       toast.success("Uploaded");
     } catch {
       toast.error("Upload failed");
+    } finally {
+      decBusy();
     }
   }
 
-  // delete doc (with modal)
+  // delete doc (with modal) — ✅ optimistic + verify on error
   function askDeleteDoc(d) {
     setModal({
       type: "deleteDoc",
@@ -167,22 +175,48 @@ export default function Dashboard() {
   }
   async function confirmDeleteDoc() {
     if (!modal?.document_id) return;
+    const id = modal.document_id;
+    const prev = docs;
+    // optimistic
+    const next = prev.filter((x) => x.document_id !== id);
+    setDocs(next);
+    saveCache("docs_cache", next);
+    setModal(null);
+
+    incBusy();
     try {
-      await api.delete(`/documents/${modal.document_id}`);
-      setDocs((d) => {
-        const n = d.filter((x) => x.document_id !== modal.document_id);
-        saveCache("docs_cache", n);
-        return n;
+      await api.delete(`/documents/${id}`, {
+        validateStatus: (s) => (s >= 200 && s < 300) || s === 404 || s === 410,
       });
       toast.success("Document deleted");
-      setModal(null);
     } catch {
-      toast.error("Delete failed");
+      // verify once
+      try {
+        const { data } = await api.get("/documents");
+        const stillThere = (data || []).some((d) => d.document_id === id);
+        setDocs(data || []);
+        saveCache("docs_cache", data || []);
+        if (!stillThere) toast.success("Document deleted");
+        else {
+          toast.error("Delete failed");
+          // rollback
+          setDocs(prev);
+          saveCache("docs_cache", prev);
+        }
+      } catch {
+        // rollback if cannot verify
+        setDocs(prev);
+        saveCache("docs_cache", prev);
+        toast.error("Delete failed");
+      }
+    } finally {
+      decBusy();
     }
   }
 
   // shares ops
   async function revokeShare(share_id) {
+    incBusy();
     try {
       await api.post(`/shares/${share_id}/revoke`);
       const mine = await api.get("/shares/mine").then((r) => r.data || []);
@@ -191,22 +225,44 @@ export default function Dashboard() {
       toast.success("Share revoked");
     } catch {
       toast.error("Failed to revoke");
+    } finally {
+      decBusy();
     }
   }
   function askDeleteShare(share_id) {
     setModal({ type: "deleteShare", share_id });
   }
+  // ✅ optimistic + verify on error
   async function confirmDeleteShare() {
     if (!modal?.share_id) return;
+    const id = modal.share_id;
+    const prev = myShares;
+    const next = prev.filter((x) => x.share_id !== id);
+    setMyShares(next);
+    saveCache("myshares_cache", next);
+    setModal(null);
+
+    incBusy();
     try {
-      await api.delete(`/shares/${modal.share_id}`);
-      const mine = await api.get("/shares/mine").then((r) => r.data || []);
-      setMyShares(mine);
-      saveCache("myshares_cache", mine);
+      await api.delete(`/shares/${id}`, {
+        validateStatus: (s) => (s >= 200 && s < 300) || s === 404 || s === 410,
+      });
       toast.success("Share deleted");
-      setModal(null);
     } catch {
-      toast.error("Failed to delete share");
+      try {
+        const mine = await api.get("/shares/mine").then((r) => r.data || []);
+        setMyShares(mine);
+        saveCache("myshares_cache", mine);
+        const stillThere = mine.some((s) => s.share_id === id);
+        if (!stillThere) toast.success("Share deleted");
+        else toast.error("Failed to delete share");
+      } catch {
+        setMyShares(prev);
+        saveCache("myshares_cache", prev);
+        toast.error("Failed to delete share");
+      }
+    } finally {
+      decBusy();
     }
   }
   function openEditExpiry(share) {
@@ -217,6 +273,7 @@ export default function Dashboard() {
     });
   }
   async function submitExpiry(newISO) {
+    incBusy();
     try {
       await api.patch(`/shares/${modal.share_id}/expiry`, {
         expiry_time: newISO || null,
@@ -228,9 +285,12 @@ export default function Dashboard() {
       setModal(null);
     } catch (e) {
       toast.error(e?.response?.data?.error || "Failed to update expiry");
+    } finally {
+      decBusy();
     }
   }
   async function expireNow(share_id) {
+    incBusy();
     try {
       await api.post(`/shares/${share_id}/expire-now`);
       const mine = await api.get("/shares/mine").then((r) => r.data || []);
@@ -239,11 +299,14 @@ export default function Dashboard() {
       toast.success("Share expired");
     } catch {
       toast.error("Failed to expire");
+    } finally {
+      decBusy();
     }
   }
 
   // notify via server
   async function notifyShare(share_id, email) {
+    incBusy();
     try {
       setNotifying(true);
       await api.post("/shares/notify-share", { share_id });
@@ -252,11 +315,13 @@ export default function Dashboard() {
       toast.error("Failed to send email");
     } finally {
       setNotifying(false);
+      decBusy();
     }
   }
 
   // create share
   async function createShare() {
+    incBusy();
     try {
       const payload = {
         document_id: shareFor,
@@ -282,10 +347,12 @@ export default function Dashboard() {
       else toast.success("Share created");
     } catch (e) {
       toast.error(e?.response?.data?.error || "Share failed");
+    } finally {
+      decBusy();
     }
   }
 
-  // real-time email check
+  // real-time email check (no overlay; lightweight)
   useEffect(() => {
     const raw = (shareForm.to_user_email || "").trim();
     if (!raw) {
@@ -329,6 +396,19 @@ export default function Dashboard() {
     <div className="wrap">
       <StyleBright />
 
+      {/* local style to brighten share sections */}
+      <style>{`
+        .share-cards {
+          background:
+            radial-gradient(900px 420px at 10% -10%, rgba(124,92,255,.18), transparent 60%),
+            radial-gradient(900px 420px at 90% -20%, rgba(34,211,238,.16), transparent 55%),
+            linear-gradient(180deg, #0e1528, #0a0f1c);
+          border-radius: 18px;
+          padding: 10px;
+          box-shadow: 0 18px 48px rgba(124,92,255,.16), inset 0 0 0 1px rgba(255,255,255,.06);
+        }
+      `}</style>
+
       <HeaderBar email={user?.email} />
 
       {/* Hide uploader on "reduce" tab, since that page has its own uploader */}
@@ -344,11 +424,16 @@ export default function Dashboard() {
       <TabsBar activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <div className="panel">
-        {activeTab === "docs" && (
-          loading ? (
+        {activeTab === "docs" &&
+          (loading ? (
             <CardSkeleton count={6} />
           ) : docs.length ? (
-            <div className="cards" role="region" aria-labelledby="tab-docs" id="panel-docs">
+            <div
+              className="cards"
+              role="region"
+              aria-labelledby="tab-docs"
+              id="panel-docs"
+            >
               {docs.map((d) => (
                 <DocCard
                   key={d.document_id}
@@ -370,14 +455,18 @@ export default function Dashboard() {
             </div>
           ) : (
             <EmptyState title="No documents yet." />
-          )
-        )}
+          ))}
 
-        {activeTab === "private" && (
-          loading ? (
+        {activeTab === "private" &&
+          (loading ? (
             <CardSkeleton count={6} />
           ) : privateShares.length ? (
-            <div className="cards" role="region" aria-labelledby="tab-private" id="panel-private">
+            <div
+              className="cards share-cards"
+              role="region"
+              aria-labelledby="tab-private"
+              id="panel-private"
+            >
               {privateShares.map((s) => (
                 <SentCard
                   key={s.share_id}
@@ -393,14 +482,18 @@ export default function Dashboard() {
             </div>
           ) : (
             <EmptyState title="No private shares yet." />
-          )
-        )}
+          ))}
 
-        {activeTab === "public" && (
-          loading ? (
+        {activeTab === "public" &&
+          (loading ? (
             <CardSkeleton count={6} />
           ) : publicShares.length ? (
-            <div className="cards" role="region" aria-labelledby="tab-public" id="panel-public">
+            <div
+              className="cards share-cards"
+              role="region"
+              aria-labelledby="tab-public"
+              id="panel-public"
+            >
               {publicShares.map((s) => (
                 <SentCard
                   key={s.share_id}
@@ -416,14 +509,18 @@ export default function Dashboard() {
             </div>
           ) : (
             <EmptyState title="No public shares yet." />
-          )
-        )}
+          ))}
 
-        {activeTab === "received" && (
-          loading ? (
+        {activeTab === "received" &&
+          (loading ? (
             <CardSkeleton count={6} />
           ) : received.length ? (
-            <div className="cards" role="region" aria-labelledby="tab-received" id="panel-received">
+            <div
+              className="cards"
+              role="region"
+              aria-labelledby="tab-received"
+              id="panel-received"
+            >
               {received.map((r) => (
                 <RecvCard
                   key={r.share_id}
@@ -435,10 +532,9 @@ export default function Dashboard() {
             </div>
           ) : (
             <EmptyState title="No shares received." />
-          )
-        )}
+          ))}
 
-        {/* ✅ NEW: Reduce tab content */}
+        {/* ✅ Reduce tab content */}
         {activeTab === "reduce" && (
           <div role="region" aria-labelledby="tab-reduce" id="panel-reduce">
             <SizeReduction />
@@ -623,6 +719,9 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* ✅ Full-page loading spinner while ANY API is in-flight */}
+      <LoadingOverlay show={loading || busyCount > 0} label="Loading…" />
     </div>
   );
 }

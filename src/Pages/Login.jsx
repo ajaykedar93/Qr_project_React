@@ -8,13 +8,12 @@ import { motion, AnimatePresence } from "framer-motion";
 // Backend base (same pattern you use elsewhere)
 const API_BASE = "https://qr-project-express.onrender.com/auth";
 
-
 export default function Login() {
   // ---- login form ----
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // <- we will show a full-page loader when true
 
   // ---- forgot-password modal ----
   const [fpOpen, setFpOpen] = useState(false);
@@ -72,7 +71,6 @@ export default function Login() {
     try {
       setFpBusy(true);
       await axios.post(`${API_BASE}/forgot`, { email: fpEmail });
-      // API is intentionally generic to prevent enumeration
       toast.success("If the account exists, an OTP has been sent.");
       setFpStep("otp");
     } catch (err) {
@@ -143,7 +141,7 @@ export default function Login() {
 
   return (
     <div style={pageWrap}>
-      {/* Bright theme variables + modal styles */}
+      {/* Bright theme variables + modal styles + screen loader styles */}
       <style>{`
         :root {
           --ink-strong: #2f1b70;
@@ -217,10 +215,37 @@ export default function Login() {
         .muted { color: var(--ink-soft); }
         .row { display: grid; gap: 8px; margin-bottom: 10px; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
-        .spinner {
-          width: 40px; height: 40px; border-radius: 999px; border: 4px solid rgba(124,92,255,.25);
-          border-top-color: #7c5cff; animation: spin .8s linear infinite; margin: 0 auto;
+
+        /* Full-page loader (shown while login request is running) */
+        .screen-loader{
+          position: fixed; inset: 0;
+          background:
+            radial-gradient(50rem 30rem at 10% 90%, rgba(255,106,61,.20), transparent 60%),
+            radial-gradient(46rem 26rem at 90% 10%, rgba(124,92,255,.20), transparent 60%),
+            rgba(255,255,255,.75);
+          backdrop-filter: blur(6px);
+          display: grid; place-items: center; z-index: 2000;
+          pointer-events: all;
         }
+        .loader-card{
+          width: min(360px, 92vw);
+          background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86));
+          border: 1px solid var(--line);
+          border-radius: 16px;
+          padding: 18px;
+          box-shadow: 0 24px 64px rgba(124,92,255,.26), inset 0 0 0 1px rgba(255,255,255,.4);
+          text-align: center;
+        }
+        .spinner {
+          width: 44px; height: 44px; border-radius: 999px;
+          border: 4px solid rgba(124,92,255,.25);
+          border-top-color: #7c5cff;
+          animation: spin .8s linear infinite;
+          margin: 0 auto 10px;
+        }
+        .loader-title{ font-weight: 900; color: var(--ink-strong); }
+        .loader-sub{ color: var(--ink-soft); font-size: 13px; margin-top: 4px; }
+
         @keyframes spin { to { transform: rotate(360deg) } }
       `}</style>
 
@@ -427,13 +452,27 @@ export default function Login() {
                   </form>
                 </>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* Spinner overlay (optional) */}
-              {false && fpBusy && (
-                <div style={{ marginTop: 12 }}>
-                  <div className="spinner" aria-label="Working…" />
-                </div>
-              )}
+      {/* ✅ Full-page loading overlay while logging in */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            className="screen-loader"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            aria-live="assertive" aria-busy="true"
+          >
+            <motion.div
+              className="loader-card"
+              initial={{ y: 16, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 8, opacity: 0 }}
+              role="alertdialog" aria-label="Signing in"
+            >
+              <div className="spinner" />
+              <div className="loader-title">Signing you in…</div>
+              <div className="loader-sub">Please wait a moment</div>
             </motion.div>
           </motion.div>
         )}

@@ -270,8 +270,7 @@ export default function SizeReduction() {
       <LocalStyles />
 
       <div className="sr-title">📉 File Size Reduction</div>
-      <div className="sr-sub">Compress images locally, optimize PDFs/others on the server.</div>
-
+     
       <div className="panel">
         {/* Uploader */}
         <div {...getRootProps()} className={`uploader ${isDragActive ? "drag" : ""}`}>
@@ -292,112 +291,149 @@ export default function SizeReduction() {
           </div>
         </div>
 
-        {/* Options + Preview */}
-        <div className="grid-2">
-          {/* Options */}
-          <div className="box">
-            <div className="label">Options</div>
+       {/* Options + Preview */}
+<div className="grid-2">
+  {/* Options */}
+  <div className="box">
+    <div className="label"></div>
 
-            {isImage(file || {}) ? (
-              <>
-                <label className="label">Quality: {Math.round(opts.quality * 100)}%</label>
-                <input
-                  type="range"
-                  min={0.2}
-                  max={1}
-                  step={0.05}
-                  className="range"
-                  value={opts.quality}
-                  onChange={(e) => setOpts((o) => ({ ...o, quality: Number(e.target.value) }))}
-                />
+    {/* Upload document (keeps everything else identical) */}
+    <div className="actions" style={{ marginBottom: 8 }}>
+      <input
+        id="sr-file-input"
+        type="file"
+        style={{ display: "none" }}
+        accept=".png,.jpg,.jpeg,.webp,.pdf,.doc,.docx,.ppt,.pptx"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > MAX_UPLOAD_MB * 1024 * 1024) {
+            toast.error(`Max ${MAX_UPLOAD_MB}MB`);
+            e.target.value = "";
+            return;
+          }
+          // reset state for fresh selection
+          setOptimized(null);
+          setDialog(null);
+          setFile(f);
+          if (isImage(f)) {
+            const url = URL.createObjectURL(f);
+            setPreviewUrl(url); // show preview immediately for images
+          } else {
+            setPreviewUrl(""); // non-image: keep preview empty (no text)
+          }
+        }}
+      />
+     
+    </div>
 
-                <div className="grid-2 mini-gap">
-                  <div>
-                    <label className="label">Max Width</label>
-                    <input
-                      type="number"
-                      className="input"
-                      min={1}
-                      value={opts.maxW}
-                      onChange={(e) => setOpts((o) => ({ ...o, maxW: Number(e.target.value || 1) }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="label">Max Height</label>
-                    <input
-                      type="number"
-                      className="input"
-                      min={1}
-                      value={opts.maxH}
-                      onChange={(e) => setOpts((o) => ({ ...o, maxH: Number(e.target.value || 1) }))}
-                    />
-                  </div>
-                </div>
+    {isImage(file || {}) ? (
+      <>
+        <label className="label">Quality: {Math.round(opts.quality * 100)}%</label>
+        <input
+          type="range"
+          min={0.2}
+          max={1}
+          step={0.05}
+          className="range"
+          value={opts.quality}
+          onChange={(e) => setOpts((o) => ({ ...o, quality: Number(e.target.value) }))}
+        />
 
-                <div style={{ marginTop: 8 }}>
-                  <label className="label">Output Format</label>
-                  <select
-                    className="select"
-                    value={opts.format}
-                    onChange={(e) => setOpts((o) => ({ ...o, format: e.target.value }))}
-                  >
-                    <option value="image/jpeg">JPEG (.jpg)</option>
-                    <option value="image/webp">WEBP (.webp)</option>
-                    <option value="image/png">PNG (.png)</option>
-                  </select>
-                </div>
-              </>
-            ) : (
-              <div className="muted" style={{ lineHeight: 1.5 }}>
-                PDFs and other docs are optimized on the server at <code>/api/reduce/upload</code>.  
-                We pass <code>quality</code>, <code>maxWidth</code> and <code>maxHeight</code> as hints.
-              </div>
-            )}
-
-            <div className="actions">
-              <button className="btn btn-accent" onClick={runReduction} disabled={!file || working}>
-                {working ? "Optimizing…" : "Reduce Size"}
-              </button>
-              <button className="btn btn-light" onClick={clearAll} disabled={working}>
-                Clear
-              </button>
-            </div>
-
-            {/* Stats */}
-            <div className="label" style={{ marginTop: 12 }}>Stats</div>
-            <div className="stat-row">
-              <span className="muted">Original</span>
-              <span>{file ? `${file.name} — ${fmtBytes(file.size)}` : "-"}</span>
-            </div>
-            <div className="stat-row">
-              <span className="muted">Optimized</span>
-              <span>
-                {isImage(file || {}) && optimized
-                  ? `${optimized.name} — ${fmtBytes(optimized.size)}`
-                  : (dialog?.payload?.resultName || "-")}
-              </span>
-            </div>
+        <div className="grid-2 mini-gap">
+          <div>
+            <label className="label">Max Width</label>
+            <input
+              type="number"
+              className="input"
+              min={1}
+              value={opts.maxW}
+              onChange={(e) => setOpts((o) => ({ ...o, maxW: Number(e.target.value || 1) }))}
+            />
           </div>
+          <div>
+            <label className="label">Max Height</label>
+            <input
+              type="number"
+              className="input"
+              min={1}
+              value={opts.maxH}
+              onChange={(e) => setOpts((o) => ({ ...o, maxH: Number(e.target.value || 1) }))}
+            />
+          </div>
+        </div>
 
-          {/* Preview */}
-          <div className="box">
-            <div className="label">Preview</div>
-            {isImage(file || {}) && previewUrl ? (
-              <img className="preview" src={previewUrl} alt="preview" />
-            ) : (
-              <div className="preview empty">{file ? "No image preview" : "Choose a file to begin"}</div>
-            )}
+        <div style={{ marginTop: 8 }}>
+          <label className="label">Output Format</label>
+          <select
+            className="select"
+            value={opts.format}
+            onChange={(e) => setOpts((o) => ({ ...o, format: e.target.value }))}
+          >
+            <option value="image/jpeg">JPEG (.jpg)</option>
+            <option value="image/webp">WEBP (.webp)</option>
+            <option value="image/png">PNG (.png)</option>
+          </select>
+        </div>
+      </>
+    ) : (
+      <div className="muted" style={{ lineHeight: 1.5 }}>
+        {/* no option text */}
+      </div>
+    )}
 
-            {/* Server result quick links */}
-            {dialog?.type === "done" && dialog?.payload?.mode === "server" && dialog?.payload?.id && (
-              <div className="actions" style={{ marginTop: 12 }}>
-                <a className="btn btn-light" href={`${REDUCE_API}/${dialog.payload.id}/preview`} target="_blank" rel="noreferrer">
-                  Preview
-                </a>
-                <a className="btn btn-accent" href={`${REDUCE_API}/${dialog.payload.id}/download`}>
-                  Download
-                </a>
-              </div>
+    <div className="actions">
+      <button className="btn btn-accent" onClick={runReduction} disabled={!file || working}>
+        {working ? "Optimizing…" : "Reduce Size"}
+      </button>
+      <button className="btn btn-light" onClick={clearAll} disabled={working}>
+        Clear
+      </button>
+    </div>
+
+    {/* Stats */}
+    <div className="label" style={{ marginTop: 12 }}>Stats</div>
+    <div className="stat-row">
+      <span className="muted">Original</span>
+      <span>{file ? `${file.name} — ${fmtBytes(file.size)}` : "-"}</span>
+    </div>
+    <div className="stat-row">
+      <span className="muted">Optimized</span>
+      <span>
+        {isImage(file || {}) && optimized
+          ? `${optimized.name} — ${fmtBytes(optimized.size)}`
+          : (dialog?.payload?.resultName || "-")}
+      </span>
+    </div>
+  </div>
+
+  {/* Preview */}
+  <div className="box">
+    <div className="label">Preview</div>
+    {isImage(file || {}) && previewUrl ? (
+      <img className="preview" src={previewUrl} alt="preview" />
+    ) : (
+      // no message text for PDFs/others or when empty — just an empty placeholder box
+      <div className="preview empty" aria-hidden="true" />
+    )}
+
+    {/* Server result quick links */}
+    {dialog?.type === "done" && dialog?.payload?.mode === "server" && dialog?.payload?.id && (
+      <div className="actions" style={{ marginTop: 12 }}>
+        <a
+          className="btn btn-light"
+          href={`${REDUCE_API}/${dialog.payload.id}/preview`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Preview
+        </a>
+        <a className="btn btn-accent" href={`${REDUCE_API}/${dialog.payload.id}/download`}>
+          Download
+        </a>
+      </div>
+  
+
             )}
 
             {/* Client optimized actions */}
